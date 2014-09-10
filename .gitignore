@@ -1,0 +1,24 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*~
+
+# Compiled Dynamic libraries
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.svn
+
+*.cmake
+CMakeCache.txt
+CMakeFiles
+devel
+gtest
+test_results
+catkin
+catkin_generated
+

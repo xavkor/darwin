@@ -1,0 +1,6 @@
+rtprio changer dans /etc/security/limits.conf
+
+retirer les 2 lignes koreki + reboot pour revenir a la normale (pc cnrs)
+
++echo 1 > /sys/bus/usb/devices/x-x.x/bConfigurationValue 
+pour forcer l'activation d'un port

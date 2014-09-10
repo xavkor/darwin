@@ -1,0 +1,110 @@
+From a61f074a4f9478b0ae4f8aa1f03a06d4cc7c0367 Mon Sep 17 00:00:00 2001
+From: Nick Felt <nfelt1@sccs.swarthmore.edu>
+Date: Thu, 24 May 2012 12:24:30 -0400
+Subject: [PATCH 1/2] patch LinuxCamera.h with #include <sys/stat.h> so it
+ compiles on workstations
+
+
+diff --git darwin/Linux/build/LinuxCamera.cpp darwin/Linux/build/LinuxCamera.cpp
+index 062af92..3a538cc 100644
+--- darwin/Linux/build/LinuxCamera.cpp
++++ darwin/Linux/build/LinuxCamera.cpp
+@@ -13,6 +13,7 @@
+ #include <errno.h>
+ #include <sys/mman.h>
+ #include <sys/ioctl.h>
++#include <sys/stat.h>
+ 
+ #include "Camera.h"
+ #include "LinuxCamera.h"
+-- 
+1.7.9.5
+
+
+From ff611db128fa220e777c672e9a2b8d85da4e753f Mon Sep 17 00:00:00 2001
+From: Nick Felt <nfelt1@sccs.swarthmore.edu>
+Date: Wed, 30 May 2012 15:00:57 -0400
+Subject: [PATCH 2/2] move linker flags in Makefiles to satisfy GCC 4.6
+
+
+diff --git darwin/Linux/project/demo/Makefile darwin/Linux/project/demo/Makefile
+index 1af1e9e..a55c0ed 100644
+--- darwin/Linux/project/demo/Makefile
++++ darwin/Linux/project/demo/Makefile
+@@ -32,7 +32,7 @@ darwin.a:
+ 	make -C ../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+diff --git darwin/Linux/project/tutorial/action_script/Makefile darwin/Linux/project/tutorial/action_script/Makefile
+index 5fed14a..98185d0 100644
+--- darwin/Linux/project/tutorial/action_script/Makefile
++++ darwin/Linux/project/tutorial/action_script/Makefile
+@@ -27,7 +27,7 @@ darwin.a:
+ 	make -C ../../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+diff --git darwin/Linux/project/tutorial/ball_following/Makefile darwin/Linux/project/tutorial/ball_following/Makefile
+index e2e473e..b8c9a54 100644
+--- darwin/Linux/project/tutorial/ball_following/Makefile
++++ darwin/Linux/project/tutorial/ball_following/Makefile
+@@ -27,7 +27,7 @@ darwin.a:
+ 	make -C ../../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+diff --git darwin/Linux/project/tutorial/camera/Makefile darwin/Linux/project/tutorial/camera/Makefile
+index 45af944..1e29845 100644
+--- darwin/Linux/project/tutorial/camera/Makefile
++++ darwin/Linux/project/tutorial/camera/Makefile
+@@ -27,7 +27,7 @@ darwin.a:
+ 	make -C ../../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+diff --git darwin/Linux/project/tutorial/color_filtering/Makefile darwin/Linux/project/tutorial/color_filtering/Makefile
+index e369c69..a89cdf0 100644
+--- darwin/Linux/project/tutorial/color_filtering/Makefile
++++ darwin/Linux/project/tutorial/color_filtering/Makefile
+@@ -27,7 +27,7 @@ darwin.a:
+ 	make -C ../../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+diff --git darwin/Linux/project/tutorial/head_tracking/Makefile darwin/Linux/project/tutorial/head_tracking/Makefile
+index c8f63d8..ec187e5 100644
+--- darwin/Linux/project/tutorial/head_tracking/Makefile
++++ darwin/Linux/project/tutorial/head_tracking/Makefile
+@@ -27,7 +27,7 @@ darwin.a:
+ 	make -C ../../../build
+ 
+ $(TARGET): darwin.a $(OBJECTS)
+-	$(CXX) $(CFLAGS) $(LFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET)
++	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS)
+ 	chmod 755 $(TARGET)
+ 
+ # useful to make a backup "make tgz"
+-- 
+1.7.9.5
+
