@@ -421,7 +421,7 @@ void Walking::Process()
    // Darwin directions 
 //	int dir[14]       = {   -1,        -1,          1,         1,         -1,            1,          -1,        -1,         -1,         -1,         1,            1,           1,           -1      };
    // Bioloid and Mine directions 
-	int dir[14]       = {   -1,        1,          1,         -1,         -1,            -1,          -1,        1,         -1,         1,         1,            -1,           1,           -1      };
+	int dir[14]       = {   -1,        1,          1,         1,         -1,            -1,          -1,        1,         -1,         -1,         1,            -1,           1,           -1      };
 /* End Modifications */
 
    double initAngle[14] = {   0.0,       0.0,        0.0,       0.0,        0.0,          0.0,         0.0,       0.0,        0.0,        0.0,       0.0,          0.0,       -48.345,       41.313    };

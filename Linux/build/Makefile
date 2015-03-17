@@ -37,6 +37,7 @@ OBJS =  ../../Framework/src/MX28.o     	\
         ../../Framework/src/vision/BallFollower.o   \
         ../../Framework/src/vision/BallTracker.o    \
         ../../Framework/src/vision/ColorFinder.o    \
+        ../../Framework/src/vision/FaceFinder.o    \
         ../../Framework/src/vision/Image.o  		\
         ../../Framework/src/vision/ImgProcess.o 	\
         ../../Framework/src/vision/Camera.o	\

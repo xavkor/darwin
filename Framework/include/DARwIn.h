@@ -23,6 +23,7 @@
 #include "BallTracker.h"
 #include "BallFollower.h"
 #include "ColorFinder.h"
+#include "FaceFinder.h"
 #include "Camera.h"
 #include "Point.h"
 #include "Vector.h"

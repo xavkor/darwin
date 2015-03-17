@@ -36,7 +36,10 @@ void BallTracker::Process(Point2D pos)
 			NoBallCount++;
 		}
 		else
+		{
 			Head::GetInstance()->InitTracking();
+                        Head::GetInstance()->MoveToHome();
+		}
 	}
 	else
 	{
