@@ -14,7 +14,7 @@
 #include "Walking.h"
 
 #define INI_FILE_PATH       "config.ini"
-#define U2D_DEV_NAME        "/dev/ttyUSB1"
+#define U2D_DEV_NAME        "/dev/ttyUSB0"
 
 using namespace Robot;
 
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 
     change_current_dir();
 
-    LinuxCM730 linux_cm730(U2D_DEV_NAME);
+    LinuxCM730 linux_cm730("/dev/ttyUSB0");
     CM730 cm730(&linux_cm730);
 
     minIni* ini = new minIni(INI_FILE_PATH);

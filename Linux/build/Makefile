@@ -55,9 +55,9 @@ OBJS =  ../../Framework/src/CM730.o     	\
         LinuxNetwork.o     \
         ../../Framework/src/motion/RazorAHRS.o     	\
         ../../Framework/src/vision/FaceFinder.o    \
-        JoystickLinux.o
-#        ../../Framework/src/controller/PS3Controller.o	\
-#        ../../Framework/src/commander/SerialInputCommander.o	\
+        JoystickLinux.o	\
+        ../../Framework/src/controller/PS3Controller.o	\
+        ../../Framework/src/commander/SerialInputCommander.o
 
 $(TARGET): $(OBJS)
 	mkdir -p ../lib/
