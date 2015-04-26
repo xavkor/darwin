@@ -14,7 +14,7 @@
 #define MAXNUM_TXPARAM      (256)
 #define MAXNUM_RXPARAM      (1024)
 
-#define CM730_EMULATED TRUE
+#define CM730_EMULATED
 
 #ifdef CM730_EMULATED
 // Emulation support

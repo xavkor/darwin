@@ -10,7 +10,8 @@
 #include "MotionStatus.h"
 #include <stdlib.h>
 
-#ifdef CN730_EMULATED
+
+#ifdef CM730_EMULATED
 #include <sys/time.h>
 #endif
 
@@ -70,7 +71,7 @@ CM730::CM730(PlatformCM730 *platform)
 	for(int i = 0; i < ID_BROADCAST; i++)
 	    m_BulkReadData[i] = BulkReadData();
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	EMULATE_CM730 =  true;
 	EMULATE_FSR =    true;
@@ -110,7 +111,7 @@ CM730::~CM730()
 {
 	Disconnect();
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) delete emu_CM730_memory;
 
@@ -517,7 +518,7 @@ int CM730::BulkRead()
 {
     unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) {
  
@@ -604,7 +605,7 @@ int CM730::SyncWrite(int start_addr, int each_length, int number, int *pParam)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int n;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) 
 	{
@@ -693,7 +694,7 @@ int CM730::SyncWrite(int start_addr, int each_length, int number, int *pParam)
 
 bool CM730::Connect()
 {
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) return DXLPowerOn();
 	if(EMULATE_AX12 == true) return DXLPowerOn();
@@ -737,7 +738,7 @@ void CM730::Disconnect()
 	unsigned char txpacket[] = {0xFF, 0xFF, 0xC8, 0x05, 0x03, 0x1A, 0xE0, 0x03, 0x32};
 	m_Platform->WritePort(txpacket, 9);
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) return;
 	if(EMULATE_AX12 == true) return;
@@ -773,7 +774,7 @@ int CM730::Ping(int id, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if((EMULATE_CM730 == true) && (id == emu_CM730_memory[P_ID])) return SUCCESS;
 
@@ -807,7 +808,7 @@ int CM730::ReadByte(int id, int address, int *pValue, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -875,7 +876,7 @@ int CM730::ReadWord(int id, int address, int *pValue, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -945,7 +946,7 @@ int CM730::ReadTable(int id, int start_addr, int end_addr, unsigned char *table,
 	int result;
 	int length = end_addr - start_addr + 1;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -1014,7 +1015,7 @@ int CM730::WriteByte(int id, int address, int value, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -1081,7 +1082,7 @@ int CM730::WriteWord(int id, int address, int value, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true)
 	{
@@ -1219,7 +1220,7 @@ int CM730::MakeColor(int red, int green, int blue)
 	return (int)(r|(g<<5)|(b<<10));
 }
 
-#ifdef CN730_EMULATED
+#ifdef CM730_EMULATED
 // Emulation support
 void CM730::Reset_CM730_Emulation(void) {
 
