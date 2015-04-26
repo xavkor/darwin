@@ -9,30 +9,30 @@
 #define _LINUX_MOTION_MANAGER_H_
 
 #include <pthread.h>
-#include "MotionManager.h"
 #include <time.h>
+#include "MotionManager.h"
 
 namespace Robot
 {
   class LinuxMotionTimer
   {
     private:
-      pthread_t m_Thread;// thread structure
-      unsigned long m_Interval_ns;
-      MotionManager *m_Manager;// reference to the motion manager class.
-      bool m_TimerRunning;
-      bool m_FinishTimer;
+      pthread_t thread;// thread structure
+      struct timespec next_time;// next absolute time
+      bool finish_thread;
+      bool timer_running;
+      MotionManager *manager;// reference to the motion manager class.
 
-    protected:
-      static void *TimerProc(void *param);// thread function
-
+		protected:
+      static void *motion_timing(void *param);// thread function
+      void update_time(int interval_ns);
     public:
-      LinuxMotionTimer(MotionManager* manager);
-      ~LinuxMotionTimer();
-
+      LinuxMotionTimer();
+      void Initialize(MotionManager* manager);
       void Start();
       void Stop();
       bool IsRunning();
+      ~LinuxMotionTimer();
   };
 }
 

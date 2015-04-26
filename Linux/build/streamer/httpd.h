@@ -89,11 +89,13 @@ typedef enum{
     IN_CMD_MIN_SATURATION_SET,
     IN_CMD_MIN_SATURATION_PLUS,
     IN_CMD_MIN_SATURATION_MINUS,
+    IN_CMD_MAX_SATURATION_SET,
+    IN_CMD_MAX_SATURATION_PLUS,
+    IN_CMD_MAX_SATURATION_MINUS,
     IN_CMD_MIN_VALUE_SET,
     IN_CMD_MIN_VALUE_PLUS,
     IN_CMD_MIN_VALUE_MINUS,
-    
-    /* walk tuner */
+		    /* walk tuner */
     IN_CMD_WALK_MODE,
     IN_CMD_WALK_SAVE,
     IN_CMD_WALK_X_OFFSET,
@@ -123,7 +125,7 @@ typedef enum{
     IN_CMD_WALK_P_GAIN,
     IN_CMD_WALK_I_GAIN,
     IN_CMD_WALK_D_GAIN,
-    
+
 }in_cmd_type;
 
 /* commands which can be send to the input plugin */
@@ -195,11 +197,14 @@ static const struct {
   { "min_saturation_set", IN_CMD_MIN_SATURATION_SET },
   { "min_saturation_plus", IN_CMD_MIN_SATURATION_PLUS },
   { "min_saturation_minus", IN_CMD_MIN_SATURATION_MINUS },
+  { "max_saturation_set", IN_CMD_MAX_SATURATION_SET },
+  { "max_saturation_plus", IN_CMD_MAX_SATURATION_PLUS },
+  { "max_saturation_minus", IN_CMD_MAX_SATURATION_MINUS },
   { "min_value_set", IN_CMD_MIN_VALUE_SET },
   { "min_value_plus", IN_CMD_MIN_VALUE_PLUS },
   { "min_value_minus", IN_CMD_MIN_VALUE_MINUS },
-  
-  { "walk_mode", IN_CMD_WALK_MODE },
+ 
+	{ "walk_mode", IN_CMD_WALK_MODE },
   { "walk_save", IN_CMD_WALK_SAVE },
   { "walk_x_offset", IN_CMD_WALK_X_OFFSET },
   { "walk_y_offset", IN_CMD_WALK_Y_OFFSET },
@@ -228,6 +233,7 @@ static const struct {
   { "walk_p_gain", IN_CMD_WALK_P_GAIN },
   { "walk_i_gain", IN_CMD_WALK_I_GAIN },
   { "walk_d_gain", IN_CMD_WALK_D_GAIN },
+
 };
 
 
@@ -316,6 +322,7 @@ public:
     static ColorFinder* red_finder;
     static ColorFinder* yellow_finder;
     static ColorFinder* blue_finder;
+    static ColorFinder* line_finder;
     static minIni*      ini;
 	static bool ClientRequest;
 

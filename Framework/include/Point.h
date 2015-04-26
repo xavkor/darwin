@@ -35,8 +35,8 @@ namespace Robot
 		Point2D & operator -= (double value);
 		Point2D & operator *= (double value);
 		Point2D & operator /= (double value);
-		Point2D operator + (const Point2D &point) const;
-		Point2D operator - (const Point2D &point) const;
+		Point2D operator + (const Point2D &point);
+		Point2D operator - (const Point2D &point);
 		Point2D operator + (double value) const;
 		Point2D operator - (double value) const;
 		Point2D operator * (double value) const;

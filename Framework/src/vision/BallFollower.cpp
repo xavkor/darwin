@@ -21,29 +21,29 @@ using namespace Robot;
 
 BallFollower::BallFollower()
 {
-	m_NoBallMaxCount =   10;
-	m_NoBallCount =      m_NoBallMaxCount;
+	m_NoBallMaxCount = 10;
+	m_NoBallCount = m_NoBallMaxCount;
 	m_KickBallMaxCount = 10;
-	m_KickBallCount =    0;
+	m_KickBallCount = 0;
 
-	m_KickTopAngle =   -5.0;
+	m_KickTopAngle = -5.0;
 	m_KickRightAngle = -30.0;
-	m_KickLeftAngle =  30.0;
+	m_KickLeftAngle = 30.0;
 
-	m_FollowMaxFBStep =  30.0;
-   m_FollowMinFBStep =  5.0;
-	m_FollowMaxRLTurn =  35.0;
-	m_FitFBStep =        3.0;
-	m_FitMaxRLTurn =     35.0;
-	m_UnitFBStep =       0.3;
-	m_UnitRLTurn =       1.0;
+	m_FollowMaxFBStep = 30.0;
+    m_FollowMinFBStep = 5.0;
+	m_FollowMaxRLTurn = 35.0;
+	m_FitFBStep = 3.0;
+	m_FitMaxRLTurn = 35.0;
+	m_UnitFBStep = 0.3;
+	m_UnitRLTurn = 1.0;
 
 	m_GoalFBStep = 0;
 	m_GoalRLTurn = 0;
-	m_FBStep =     0;
-	m_RLTurn =     0;
-	DEBUG_PRINT =  false;
-	KickBall =     0;
+	m_FBStep = 0;
+	m_RLTurn = 0;
+	DEBUG_PRINT = false;
+	KickBall = 0;
 }
 
 BallFollower::~BallFollower()

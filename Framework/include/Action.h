@@ -16,7 +16,6 @@
 // joystick add
 
 
-
 namespace Robot
 {
 	class Action : public MotionModule
@@ -55,7 +54,8 @@ namespace Robot
 			unsigned char accel;            // Acceleration time 24
 			unsigned char next;             // Link to next     25
 			unsigned char exit;             // Link to exit     26
-			unsigned char reserved5[4];     // reserved5        27~30
+			unsigned char seq_repeats;			// Repeat count of full seq, this should only be on start page
+			unsigned char reserved5[3];     // reserved5        27~30
 			unsigned char checksum;         // checksum         31
 			unsigned char slope[31];        // CW/CCW compliance slope  32~62
 			unsigned char reserved6;        // reserved6        63
@@ -86,8 +86,11 @@ namespace Robot
 // joystick add
 
 		int m_IndexPlayingPage;
+		int m_StartingPage;
 		bool m_FirstDrivingStart;
 		int m_PageStepCount;
+		int m_StartingPageSeqCount;
+		int m_SeqCount;
 		bool m_Playing;
 		bool m_StopPlaying;
 		bool m_PlayingFinished;

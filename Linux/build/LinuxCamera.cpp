@@ -56,13 +56,13 @@ LinuxCamera::~LinuxCamera()
     delete fbuffer;
 }
 
-void LinuxCamera::ErrorExit(const char* s)
+int LinuxCamera::ErrorExit(const char* s)
 {
     fprintf(stderr, "%s error %d, %s\n", s, errno, strerror(errno));
     if(errno == 16)
         fprintf(stderr, "\nYou must free up camera resources used by running programs. \n"
                 "Kill a program that uses the camera.\n\n");
-    exit(EXIT_FAILURE);
+    return (EXIT_FAILURE);
 }
 
 int LinuxCamera::Initialize(int deviceIndex)
@@ -75,19 +75,19 @@ int LinuxCamera::Initialize(int deviceIndex)
     if (-1 == stat (devName, &st)) {
         fprintf (stderr, "Cannot identify '%s': %d, %s\n",
                  devName, errno, strerror (errno));
-        exit (EXIT_FAILURE);
+        return (EXIT_FAILURE);
     }
 
     if (!S_ISCHR (st.st_mode)) {
         fprintf (stderr, "%s is no device\n", devName);
-        exit (EXIT_FAILURE);
+        return (EXIT_FAILURE);
     }
 
     camera_fd = open(devName, O_RDWR | O_NONBLOCK, 0);
     if (-1 == camera_fd) {
         fprintf (stderr, "Cannot open '%s': %d, %s\n",
                  devName, errno, strerror (errno));
-        exit (EXIT_FAILURE);
+        return (EXIT_FAILURE);
     }
 
     /* set format */
@@ -120,7 +120,7 @@ int LinuxCamera::Initialize(int deviceIndex)
     fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
     if (-1 == ioctl (camera_fd, VIDIOC_S_FMT, &fmt))
-        ErrorExit ("VIDIOC_S_FMT");
+        return ErrorExit ("VIDIOC_S_FMT");
 
     unsigned int min = fmt.fmt.pix.width * 2;
     if(fmt.fmt.pix.bytesperline < min)
@@ -135,12 +135,12 @@ int LinuxCamera::Initialize(int deviceIndex)
 
     fps.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(camera_fd, VIDIOC_G_PARM, &fps) == -1)
-        ErrorExit("VIDIOC_G_PARM");
+        return ErrorExit("VIDIOC_G_PARM");
 
     fps.parm.capture.timeperframe.numerator = 1;
-    fps.parm.capture.timeperframe.denominator = 15;
+    fps.parm.capture.timeperframe.denominator = 30;
     if(ioctl(camera_fd, VIDIOC_S_PARM, &fps) == -1)
-        ErrorExit("VIDIOC_S_PARM");
+        return ErrorExit("VIDIOC_S_PARM");
 
     /* init mmap */
     struct v4l2_requestbuffers req;
@@ -154,22 +154,22 @@ int LinuxCamera::Initialize(int deviceIndex)
         if (EINVAL == errno) {
             fprintf (stderr, "%s does not support "
                      "memory mapping\n", devName);
-            exit (EXIT_FAILURE);
+            return (EXIT_FAILURE);
         } else {
-            ErrorExit ("VIDIOC_REQBUFS");
+            return ErrorExit ("VIDIOC_REQBUFS");
         }
     }
 
     if (req.count < 2) {
         fprintf (stderr, "Insufficient buffer memory on %s\n",
                  devName);
-        exit (EXIT_FAILURE);
+        return (EXIT_FAILURE);
     }
 
     buffers = (buffer *)calloc(req.count, sizeof(*buffers));
     if (!buffers) {
         fprintf (stderr, "Out of memory\n");
-        exit (EXIT_FAILURE);
+        return (EXIT_FAILURE);
     }
 
     for(n_buffers = 0; n_buffers < req.count; ++n_buffers)
@@ -182,7 +182,7 @@ int LinuxCamera::Initialize(int deviceIndex)
         buf.index   = n_buffers;
 
         if (-1 == ioctl (camera_fd, VIDIOC_QUERYBUF, &buf))
-            ErrorExit ("VIDIOC_QUERYBUF");
+            return ErrorExit ("VIDIOC_QUERYBUF");
 
         buffers[n_buffers].length = buf.length;
         buffers[n_buffers].start =
@@ -193,7 +193,7 @@ int LinuxCamera::Initialize(int deviceIndex)
                      camera_fd, buf.m.offset);
 
         if (MAP_FAILED == buffers[n_buffers].start)
-                ErrorExit ("mmap");
+                return ErrorExit ("mmap");
     }
 
     /* queue buffers */
@@ -207,14 +207,14 @@ int LinuxCamera::Initialize(int deviceIndex)
         buf.index   = i;
 
         if (-1 == ioctl (camera_fd, VIDIOC_QBUF, &buf))
-            ErrorExit ("VIDIOC_QBUF");
+            return ErrorExit ("VIDIOC_QBUF");
     }
 
     /* streaming on */
     enum v4l2_buf_type type;
     type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if (-1 == ioctl (camera_fd, VIDIOC_STREAMON, &type))
-        ErrorExit ("VIDIOC_STREAMON");
+        return ErrorExit ("VIDIOC_STREAMON");
 
     /* get camera default setting */
     settings.brightness = v4l2GetControl(V4L2_CID_BRIGHTNESS);
@@ -228,6 +228,11 @@ int LinuxCamera::Initialize(int deviceIndex)
     v4l2SetControl(V4L2_CID_AUTO_WHITE_BALANCE, 0);
     v4l2SetControl(V4L2_CID_AUTOGAIN, 0);
     v4l2SetControl(V4L2_CID_HUE_AUTO, 0);
+
+		/* flip HV */
+		//doesn't seem to work
+		//v4l2SetControl(V4L2_CID_HFLIP, 1);
+		//v4l2SetControl(V4L2_CID_VFLIP, 1);
 
     return 1;
 }
@@ -377,7 +382,7 @@ int LinuxCamera::ReadFrame()
             /* fall through */
 
         default:
-            exit (EXIT_FAILURE);
+            return (EXIT_FAILURE);
         }
     }
 
@@ -386,20 +391,19 @@ int LinuxCamera::ReadFrame()
     //process_image (buffers[buf.index].start);
     for(int i = 0; i < fbuffer->m_YUVFrame->m_ImageSize/2; i++)
         fbuffer->m_YUVFrame->m_ImageData[i] = ((unsigned char*)buffers[buf.index].start)[i];
-    /************************ Start return image ******************************/
     //ImgProcess::HFlipYUV(fbuffer->m_YUVFrame);
     //ImgProcess::VFlipYUV(fbuffer->m_YUVFrame);
-    /************************* End return image *******************************/
+//		ImgProcess::HVFlipYUV(fbuffer->m_YUVFrame);
     ImgProcess::YUVtoRGB(fbuffer);
     ImgProcess::RGBtoHSV(fbuffer);
 
     if (-1 == ioctl (camera_fd, VIDIOC_QBUF, &buf))
-        ErrorExit ("VIDIOC_QBUF");
+        return ErrorExit ("VIDIOC_QBUF");
 
     return 1;
 }
 
-void LinuxCamera::CaptureFrame()
+int LinuxCamera::CaptureFrame()
 {
 	if(DEBUG_PRINT == true)
 	{
@@ -433,12 +437,12 @@ void LinuxCamera::CaptureFrame()
             if (EINTR == errno)
                 continue;
 
-            exit (EXIT_FAILURE);
+            return (EXIT_FAILURE);
         }
 
         if (0 == r) {
             fprintf (stderr, "select timeout\n");
-            exit (EXIT_FAILURE);
+            return (EXIT_FAILURE);
         }
 
         if (ReadFrame())
@@ -446,123 +450,6 @@ void LinuxCamera::CaptureFrame()
 
         /* EAGAIN - continue select loop. */
     }
-}
-
-// WEBOTS PART //
-
-int LinuxCamera::ReadFrameWb()
-{
-    struct v4l2_buffer buf;
-
-    CLEAR (buf);
-
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    buf.memory = V4L2_MEMORY_MMAP;
-
-    if (-1 == ioctl (camera_fd, VIDIOC_DQBUF, &buf)) {
-        switch (errno) {
-        case EAGAIN:
-            return 0;
-
-        case EIO:
-            /* Could ignore EIO, see spec. */
-
-            /* fall through */
-
-        default:
-            exit (EXIT_FAILURE);
-        }
-    }
-
-    assert (buf.index < n_buffers);
-
-    // Extract the image from the buffer, flip it (H and V) and convert it in BGRA format (everything in only one loop)
-    unsigned char *yuyv = (unsigned char*)buffers[buf.index].start + fbuffer->m_YUVFrame->m_ImageSize/2 - 1;
-    unsigned char *bgra  = fbuffer->m_BGRAFrame->m_ImageData;
-    int z = 0;
-
-    while(yuyv > (((unsigned char*)buffers[buf.index].start))) {
-            int r, g, b;
-            int y, u, v;
-
-            if(z)
-                y = yuyv[-3] << 8;
-            else
-                y = yuyv[-1] << 8;
-            u = yuyv[-2] - 128;
-            v = yuyv[0] - 128;
-
-            r = (y + (359 * v)) >> 8;
-            g = (y - (88 * u) - (183 * v)) >> 8;
-            b = (y + (454 * u)) >> 8;
-
-            *(bgra++) = (b > 255) ? 255 : ((b < 0) ? 0 : b);
-            *(bgra++) = (g > 255) ? 255 : ((g < 0) ? 0 : g);
-            *(bgra++) = (r > 255) ? 255 : ((r < 0) ? 0 : r);
-            *(bgra++) = 255; // a
-
-            if (z++)
-            {
-                z = 0;
-                yuyv -= 4;
-            }
-    }
-
-
-    if (-1 == ioctl (camera_fd, VIDIOC_QBUF, &buf))
-        ErrorExit ("VIDIOC_QBUF");
-
-    return 1;
-}
-
-void LinuxCamera::CaptureFrameWb()
-{
-	if(DEBUG_PRINT == true)
-	{
-		struct timeval tv;
-		static double beforeTime = 0;
-		double currentTime;
-		double durationTime;
-		
-		gettimeofday(&tv, NULL);
-		currentTime = (double)tv.tv_sec*1000.0 + (double)tv.tv_usec/1000.0;
-		durationTime = currentTime - beforeTime;
-		fprintf(stderr, "\rCamera: %.1fmsec(%.1ffps)                    ", durationTime, 1000.0 / durationTime);
-		beforeTime = currentTime;
-	}
-
-
-    for (;;) {
-
-        fd_set fds;
-        struct timeval tv;
-        int r;
-
-        FD_ZERO (&fds);
-        FD_SET (camera_fd, &fds);
-
-        /* Timeout. */
-        tv.tv_sec = 2;
-        tv.tv_usec = 0;
-
-        r = select (camera_fd + 1, &fds, NULL, NULL, &tv);
-
-        if (-1 == r) {
-            if (EINTR == errno)
-                continue;
-
-            exit (EXIT_FAILURE);
-        }
-
-        if (0 == r) {
-            fprintf (stderr, "select timeout\n");
-            exit (EXIT_FAILURE);
-        }
-
-       if (ReadFrameWb())
-            break;
-
-        /* EAGAIN - continue select loop. */
-    }
+		return 1;
 }
 

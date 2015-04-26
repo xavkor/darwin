@@ -8,31 +8,30 @@
 #include "FSR.h"
 #include "CM730.h"
 #include "MotionStatus.h"
+#include <stdlib.h>
 
-// Emulation support
-#include "MX28.h"
-#include "AX12.h"
+#ifdef CN730_EMULATED
 #include <sys/time.h>
-// end emulation
+#endif
 
 using namespace Robot;
 
 
-#define ID					   (2)
-#define LENGTH				   (3)
+#define ID					(2)
+#define LENGTH				(3)
 #define INSTRUCTION			(4)
-#define ERRBIT				   (4)
-#define PARAMETER			   (5)
+#define ERRBIT				(4)
+#define PARAMETER			(5)
 #define DEFAULT_BAUDNUMBER	(1)
 
-#define INST_PING			   (1)
-#define INST_READ			   (2)
+#define INST_PING			(1)
+#define INST_READ			(2)
 #define INST_WRITE			(3)
 #define INST_REG_WRITE		(4)
 #define INST_ACTION			(5)
 #define INST_RESET			(6)
 #define INST_SYNC_WRITE		(131)   // 0x83
-#define INST_BULK_READ     (146)   // 0x92
+#define INST_BULK_READ      (146)   // 0x92
 
 
 BulkReadData::BulkReadData() :
@@ -65,9 +64,13 @@ CM730::CM730(PlatformCM730 *platform)
 {
 	m_Platform = platform;
 	DEBUG_PRINT = false;
+	m_DelayedWords = 0;
+	m_bIncludeTempData = false;
+	m_BulkReadTxPacket[LENGTH] = 0;
 	for(int i = 0; i < ID_BROADCAST; i++)
 	    m_BulkReadData[i] = BulkReadData();
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	EMULATE_CM730 =  true;
 	EMULATE_FSR =    true;
@@ -100,12 +103,14 @@ CM730::CM730(PlatformCM730 *platform)
 		Reset_AX12_Emulation();
 	}
 	// End emulation support
+#endif
 }
 
 CM730::~CM730()
 {
 	Disconnect();
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) delete emu_CM730_memory;
 
@@ -124,6 +129,9 @@ CM730::~CM730()
 		if(logfileAX12 != 0) fclose(logfileAX12);
 	}
 	// End emulation support
+#endif
+
+	exit(0);
 }
 
 int CM730::TxRxPacket(unsigned char *txpacket, unsigned char *rxpacket, int priority)
@@ -138,7 +146,7 @@ int CM730::TxRxPacket(unsigned char *txpacket, unsigned char *rxpacket, int prio
 	int length = txpacket[LENGTH] + 4;
 
 	txpacket[0] = 0xFF;
-   txpacket[1] = 0xFF;
+    txpacket[1] = 0xFF;
 	txpacket[length - 1] = CalculateChecksum(txpacket);
 
 	if(DEBUG_PRINT == true)
@@ -452,7 +460,7 @@ void CM730::MakeBulkReadPacket()
     m_BulkReadTxPacket[INSTRUCTION]     = INST_BULK_READ;
     m_BulkReadTxPacket[PARAMETER]       = (unsigned char)0x0;
 
-    if(Ping(CM730::ID_CM, 0) == SUCCESS)
+    //if(Ping(CM730::ID_CM, 0) == SUCCESS)
     {
         m_BulkReadTxPacket[PARAMETER+3*number+1] = 30;
         m_BulkReadTxPacket[PARAMETER+3*number+2] = CM730::ID_CM;
@@ -470,22 +478,37 @@ void CM730::MakeBulkReadPacket()
 //            number++;
 //        }
 //    }
-
+    if(m_bIncludeTempData == true)
+			{
+			for(int id = JointData::ID_MIN; id <= JointData::ID_MAX; id++)
+				{
+				if(MotionStatus::m_CurrentJoints.GetEnable(id))
+					{
+					m_BulkReadTxPacket[PARAMETER+3*number+1] = 1;   // length
+					m_BulkReadTxPacket[PARAMETER+3*number+2] = id;  // id
+					m_BulkReadTxPacket[PARAMETER+3*number+3] = MX28::P_PRESENT_TEMPERATURE; // start address
+					number++;
+					}
+				}
+			}
+		/*
     if(Ping(FSR::ID_L_FSR, 0) == SUCCESS)
     {
-        m_BulkReadTxPacket[PARAMETER+3*number+1] = 10;               // length
+        m_BulkReadTxPacket[PARAMETER+3*number+1] = 2;               // length
         m_BulkReadTxPacket[PARAMETER+3*number+2] = FSR::ID_L_FSR;   // id
-        m_BulkReadTxPacket[PARAMETER+3*number+3] = FSR::P_FSR1_L;    // start address
+        m_BulkReadTxPacket[PARAMETER+3*number+3] = FSR::P_FSR_X;    // start address
         number++;
     }
 
     if(Ping(FSR::ID_R_FSR, 0) == SUCCESS)
     {
-        m_BulkReadTxPacket[PARAMETER+3*number+1] = 10;               // length
+        m_BulkReadTxPacket[PARAMETER+3*number+1] = 2;               // length
         m_BulkReadTxPacket[PARAMETER+3*number+2] = FSR::ID_R_FSR;   // id
-        m_BulkReadTxPacket[PARAMETER+3*number+3] = FSR::P_FSR1_L;    // start address
+        m_BulkReadTxPacket[PARAMETER+3*number+3] = FSR::P_FSR_X;    // start address
         number++;
     }
+*/
+    //fprintf(stderr, "NUMBER : %d \n", number);
 
     m_BulkReadTxPacket[LENGTH]          = (number * 3) + 3;
 }
@@ -494,6 +517,7 @@ int CM730::BulkRead()
 {
     unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) {
  
@@ -563,12 +587,13 @@ int CM730::BulkRead()
 
 	}
 	// End emulation support
+#endif
 
     if(m_BulkReadTxPacket[LENGTH] != 0)
         return TxRxPacket(m_BulkReadTxPacket, rxpacket, 0);
     else
     {
-        MakeBulkReadPacket();
+				MakeBulkReadPacket();
         return TX_FAIL;
     }
 }
@@ -579,6 +604,7 @@ int CM730::SyncWrite(int start_addr, int each_length, int number, int *pParam)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int n;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) 
 	{
@@ -652,6 +678,7 @@ int CM730::SyncWrite(int start_addr, int each_length, int number, int *pParam)
 		return SUCCESS;
 	}
 	// End emulation support
+#endif
 
     txpacket[ID]                = (unsigned char)ID_BROADCAST;
     txpacket[INSTRUCTION]       = INST_SYNC_WRITE;
@@ -666,10 +693,12 @@ int CM730::SyncWrite(int start_addr, int each_length, int number, int *pParam)
 
 bool CM730::Connect()
 {
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) return DXLPowerOn();
 	if(EMULATE_AX12 == true) return DXLPowerOn();
 	// End emulation support
+#endif
 
 	if(m_Platform->OpenPort() == false)
 	{
@@ -681,30 +710,14 @@ bool CM730::Connect()
 	return DXLPowerOn();
 }
 
-bool CM730::ChangeBaud(int baud)
+bool CM730::DXLPowerOn(bool state)
 {
-	// Emulation support
-	if(EMULATE_MX28 == true) return DXLPowerOn();
-	if(EMULATE_AX12 == true) return DXLPowerOn();
-	// End emulation support
-
-    if(m_Platform->SetBaud(baud) == false)
-    {
-        fprintf(stderr, "\n Fail to change baudrate\n");
-        return false;
-    }
-
-    return DXLPowerOn();
-}
-
-bool CM730::DXLPowerOn()
-{
-	if(WriteByte(CM730::ID_CM, CM730::P_DXL_POWER, 1, 0) == CM730::SUCCESS)
+	if(WriteByte(CM730::ID_CM, CM730::P_DXL_POWER, state==true?1:0, 0) == CM730::SUCCESS)
 	{
 		if(DEBUG_PRINT == true)
 			fprintf(stderr, " Succeed to change Dynamixel power!\n");
 		
-		WriteWord(CM730::ID_CM, CM730::P_LED_HEAD_L, MakeColor(255, 128, 0), 0);
+		WriteWord(CM730::ID_CM, CM730::P_LED_HEAD_L, state==true?MakeColor(1, 1, 1):MakeColor(0, 0, 0), 0);
 		m_Platform->Sleep(300); // about 300msec
 	}
 	else
@@ -724,10 +737,12 @@ void CM730::Disconnect()
 	unsigned char txpacket[] = {0xFF, 0xFF, 0xC8, 0x05, 0x03, 0x1A, 0xE0, 0x03, 0x32};
 	m_Platform->WritePort(txpacket, 9);
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_MX28 == true) return;
 	if(EMULATE_AX12 == true) return;
 	// End emulation support
+#endif
 
 	m_Platform->ClosePort();
 }
@@ -742,12 +757,23 @@ int CM730::WriteWord(int address, int value, int *error)
 	return WriteWord(ID_CM, address, value, error);
 }
 
+void CM730::WriteWordDelayed(int address,int value)
+{
+	if(m_DelayedWords > 9) return;
+
+	m_DelayedWord[m_DelayedWords] = value;
+	m_DelayedAddress[m_DelayedWords] = address;
+	m_DelayedWords++;
+	return;
+}
+
 int CM730::Ping(int id, int *error)
 {
 	unsigned char txpacket[MAXNUM_TXPARAM + 10] = {0, };
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if((EMULATE_CM730 == true) && (id == emu_CM730_memory[P_ID])) return SUCCESS;
 
@@ -759,6 +785,7 @@ int CM730::Ping(int id, int *error)
    if(AX12::isAX12(id))
 	   if((EMULATE_AX12 == true) && (id < EMULATED_SERVO_COUNT)) return SUCCESS;
 	// End emulation support
+#endif
 
     txpacket[ID]           = (unsigned char)id;
     txpacket[INSTRUCTION]  = INST_PING;
@@ -780,6 +807,7 @@ int CM730::ReadByte(int id, int address, int *pValue, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -822,12 +850,13 @@ int CM730::ReadByte(int id, int address, int *pValue, int *error)
 		}
 	} 
 	// End emulation support
+#endif
 
-   txpacket[ID]           = (unsigned char)id;
-   txpacket[INSTRUCTION]  = INST_READ;
+    txpacket[ID]           = (unsigned char)id;
+    txpacket[INSTRUCTION]  = INST_READ;
 	txpacket[PARAMETER]    = (unsigned char)address;
-   txpacket[PARAMETER+1]  = 1;
-   txpacket[LENGTH]       = 4;
+    txpacket[PARAMETER+1]  = 1;
+    txpacket[LENGTH]       = 4;
 
 	result = TxRxPacket(txpacket, rxpacket, 2);
 	if(result == SUCCESS)
@@ -846,6 +875,7 @@ int CM730::ReadWord(int id, int address, int *pValue, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -888,12 +918,13 @@ int CM730::ReadWord(int id, int address, int *pValue, int *error)
 		}
 	} 
 	// End emulation support
+#endif
 
-   txpacket[ID]           = (unsigned char)id;
-   txpacket[INSTRUCTION]  = INST_READ;
+    txpacket[ID]           = (unsigned char)id;
+    txpacket[INSTRUCTION]  = INST_READ;
 	txpacket[PARAMETER]    = (unsigned char)address;
-   txpacket[PARAMETER+1]  = 2;
-   txpacket[LENGTH]       = 4;
+    txpacket[PARAMETER+1]  = 2;
+    txpacket[LENGTH]       = 4;
 
 	result = TxRxPacket(txpacket, rxpacket, 2);
 	if(result == SUCCESS)
@@ -914,6 +945,7 @@ int CM730::ReadTable(int id, int start_addr, int end_addr, unsigned char *table,
 	int result;
 	int length = end_addr - start_addr + 1;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -956,12 +988,12 @@ int CM730::ReadTable(int id, int start_addr, int end_addr, unsigned char *table,
 		}
 	} 
 	// End emulation support
-
-   txpacket[ID]           = (unsigned char)id;
-   txpacket[INSTRUCTION]  = INST_READ;
+#endif
+    txpacket[ID]           = (unsigned char)id;
+    txpacket[INSTRUCTION]  = INST_READ;
 	txpacket[PARAMETER]    = (unsigned char)start_addr;
-   txpacket[PARAMETER+1]  = (unsigned char)length;
-   txpacket[LENGTH]       = 4;
+    txpacket[PARAMETER+1]  = (unsigned char)length;
+    txpacket[LENGTH]       = 4;
 
 	result = TxRxPacket(txpacket, rxpacket, 1);
 	if(result == SUCCESS)
@@ -982,6 +1014,7 @@ int CM730::WriteByte(int id, int address, int value, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true) 
 	{
@@ -1024,12 +1057,13 @@ int CM730::WriteByte(int id, int address, int value, int *error)
 		}
 	}
 	// End emulation support
+#endif
 
-   txpacket[ID]           = (unsigned char)id;
-   txpacket[INSTRUCTION]  = INST_WRITE;
+    txpacket[ID]           = (unsigned char)id;
+    txpacket[INSTRUCTION]  = INST_WRITE;
 	txpacket[PARAMETER]    = (unsigned char)address;
-   txpacket[PARAMETER+1]  = (unsigned char)value;
-   txpacket[LENGTH]       = 4;
+    txpacket[PARAMETER+1]  = (unsigned char)value;
+    txpacket[LENGTH]       = 4;
 
 	result = TxRxPacket(txpacket, rxpacket, 2);
 	if(result == SUCCESS && id != ID_BROADCAST)
@@ -1047,6 +1081,7 @@ int CM730::WriteWord(int id, int address, int value, int *error)
 	unsigned char rxpacket[MAXNUM_RXPARAM + 10] = {0, };
 	int result;
 
+#ifdef CN730_EMULATED
 	// Emulation support
 	if(EMULATE_CM730 == true)
 	{
@@ -1130,13 +1165,14 @@ int CM730::WriteWord(int id, int address, int value, int *error)
 		}
 	}
 	// End emulation support
+#endif
 
-   txpacket[ID]           = (unsigned char)id;
-   txpacket[INSTRUCTION]  = INST_WRITE;
+    txpacket[ID]           = (unsigned char)id;
+    txpacket[INSTRUCTION]  = INST_WRITE;
 	txpacket[PARAMETER]    = (unsigned char)address;
-   txpacket[PARAMETER+1]  = (unsigned char)GetLowByte(value);
+    txpacket[PARAMETER+1]  = (unsigned char)GetLowByte(value);
 	txpacket[PARAMETER+2]  = (unsigned char)GetHighByte(value);
-   txpacket[LENGTH]       = 5;
+    txpacket[LENGTH]       = 5;
 
 	result = TxRxPacket(txpacket, rxpacket, 2);
 	if(result == SUCCESS && id != ID_BROADCAST)
@@ -1173,44 +1209,17 @@ int CM730::GetHighByte(int word)
     return (int)(temp >> 8);
 }
 
+// 5 bits per color
 int CM730::MakeColor(int red, int green, int blue)
 {
-	int r = red & 0xFF;
-	int g = green & 0xFF;
-	int b = blue & 0xFF;
+	int r = red & 0x1F;
+	int g = green & 0x1F;
+	int b = blue & 0x1F;
 
-	return (int)(((b>>3)<<10)|((g>>3)<<5)|(r>>3));
+	return (int)(r|(g<<5)|(b<<10));
 }
 
-// ***   WEBOTS PART  *** //
-
-void CM730::MakeBulkReadPacketWb()
-{
-		int number = 0;
-
-		m_BulkReadTxPacket[ID] = (unsigned char)ID_BROADCAST;
-		m_BulkReadTxPacket[INSTRUCTION] = INST_BULK_READ;
-		m_BulkReadTxPacket[PARAMETER] = (unsigned char)0x0;
-
-		if(Ping(CM730::ID_CM, 0) == SUCCESS)
-		{
-				m_BulkReadTxPacket[PARAMETER+3*number+1] = 30;
-				m_BulkReadTxPacket[PARAMETER+3*number+2] = CM730::ID_CM;
-				m_BulkReadTxPacket[PARAMETER+3*number+3] = CM730::P_DXL_POWER;
-				number++;
-		}
-
-		for(int id = 1; id < JointData::NUMBER_OF_JOINTS; id++)
-		{
-				m_BulkReadTxPacket[PARAMETER+3*number+1] = 6; // length (goal + speed + torque)
-				m_BulkReadTxPacket[PARAMETER+3*number+2] = id;	// id
-				m_BulkReadTxPacket[PARAMETER+3*number+3] = MX28::P_PRESENT_POSITION_L; // start address
-				number++;
-		}
-
-		m_BulkReadTxPacket[LENGTH] = (number * 3) + 3;
-}
-
+#ifdef CN730_EMULATED
 // Emulation support
 void CM730::Reset_CM730_Emulation(void) {
 
@@ -1355,3 +1364,4 @@ void CM730::Reset_AX12_Emulation(void) {
 }
 // End emulation support
 
+#endif

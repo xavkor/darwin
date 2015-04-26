@@ -7,13 +7,20 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <unistd.h>
 #include "FSR.h"
 #include "MX28.h"
 #include "AX12.h"
 #include "MotionManager.h"
+#include <unistd.h>
+#include <assert.h>
 
 using namespace Robot;
+
+// Torque adaption every second
+const int TORQUE_ADAPTION_CYCLES = 1000 / MotionModule::TIME_UNIT;
+const int DEST_TORQUE = 1023;
+
+//#define LOG_VOLTAGES 1
 
 MotionManager* MotionManager::m_UniqueInstance = new MotionManager();
 
@@ -24,52 +31,28 @@ MotionManager::MotionManager() :
         m_IsRunning(false),
         m_IsThreadRunning(false),
         m_IsLogging(false),
+		m_torqueAdaptionCounter(TORQUE_ADAPTION_CYCLES),
+		m_voltageAdaptionFactor(1.0),
         DEBUG_PRINT(false)
 {
     for(int i = 0; i < JointData::NUMBER_OF_JOINTS; i++)
         m_Offset[i] = 0;
+
+#if LOG_VOLTAGES
+    assert((m_voltageLog = fopen("voltage.log", "w")));
+    fprintf(m_voltageLog, "Voltage   Torque\n");
+#endif
 }
 
 MotionManager::~MotionManager()
 {
 }
 
-double gyro_Y, gyro_X, accel_X, accel_Y, accel_Z;
-
-// Razor error callback handler
-// Will be called from (and in) Razor background thread!
-void on_error(const std::string &msg)
-{
-  std::cout << "  " << "ERROR: " << msg << std::endl;
-  
-  // NOTE: make a copy of the message if you want to save it or send it to another thread. Do not
-  // save or pass the reference itself, it will not be valid after this function returns! 
-}
-
-// Razor data callback handler
-// Will be called from (and in) Razor background thread!
-// 'data' depends on mode that was set when creating the RazorAHRS object. In this case 'data'
-// holds 3 float values: yaw, pitch and roll.
-void on_data(const float data[])
-{
-   double coeff = 1/14.375;//1023/28750;//
-
-   accel_X = 512-data[0];
-   accel_Y = 512-data[1];
-   accel_Z = 512-data[2];
-   gyro_X = coeff*data[7];
-   gyro_Y = coeff*data[6];
-
-//   std::cout << "ACC = " << data[0] << ", " << data[1] << ", " << data[2]
-//     << "        MAG = " << data[3] << ", " << data[4] << ", " << data[5]
-//     << "        GYR = " << data[6] << ", " << data[7] << ", " << data[8] << std::endl;
-}
-
-
-bool MotionManager::Initialize(CM730 *cm730)
+bool MotionManager::Initialize(CM730 *cm730, bool fadeIn)
 {
 	int value, error;
 
+	usleep(100);
 	m_CM730 = cm730;
 	m_Enabled = false;
 	m_ProcessEnable = true;
@@ -81,12 +64,7 @@ bool MotionManager::Initialize(CM730 *cm730)
 		return false;
 	}
 
-// Start RAZOR add
-   serial_port_name = "/dev/ttyUSB1";
-   razor = new RazorAHRS(serial_port_name, on_data, on_error, RazorAHRS::ACC_MAG_GYR_CALIBRATED);
-// End RAZOR add
-
-	for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
+	for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
 	{
 		if(DEBUG_PRINT == true)
 			fprintf(stderr, "ID:%d initializing...", id);
@@ -129,6 +107,20 @@ bool MotionManager::Initialize(CM730 *cm730)
       }
 	}
 
+	if(fadeIn)
+	{
+		for(int i=JointData::ID_R_SHOULDER_PITCH; i<JointData::NUMBER_OF_JOINTS; i++)
+      {
+         if(MX28::isMX28(i))
+			   cm730->WriteWord(i, MX28::P_TORQUE_LIMIT_L, 0, 0);
+         if(AX12::isAX12(i))
+			   cm730->WriteWord(i, AX12::P_TORQUE_LIMIT_L, 0, 0);
+      }
+	}
+
+	m_fadeIn = fadeIn;
+	m_torque_count = 0;
+
 	m_CalibrationStatus = 0;
 	m_FBGyroCenter = 512;
 	m_RLGyroCenter = 512;
@@ -143,7 +135,7 @@ bool MotionManager::Reinitialize()
 	m_CM730->DXLPowerOn();
 
 	int value, error;
-	for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
+	for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
 	{
 		if(DEBUG_PRINT == true)
 			fprintf(stderr, "ID:%d initializing...", id);
@@ -203,11 +195,10 @@ void MotionManager::StartLogging()
         count++;
 		if(count > 256) return;
     }
-
-    m_LogFileStream.open(szFile, std::ios::out);
-    for(int id = 1; id < JointData::NUMBER_OF_JOINTS; id++)
-        m_LogFileStream << "ID_" << id << "_GP,ID_" << id << "_PP,";
-    m_LogFileStream << "GyroFB,GyroRL,AccelFB,AccelRL,L_FSR_X,L_FSR_Y,R_FSR_X,R_FSR_Y" << std::endl;
+		m_LogFileStream.open(szFile, std::ios::out);
+    for(int id = JointData::ID_MIN; id <= JointData::ID_MAX; id++)
+        m_LogFileStream << "nID_" << id << "_GP,nID_" << id << "_PP,";
+    m_LogFileStream << "GyroFB,GyroRL,AccelFB,AccelRL,L_FSR_X,L_FSR_Y,R_FSR_X,R_FSR_Y," << "\x0d\x0a";
 
     m_IsLogging = true;
 }
@@ -226,15 +217,13 @@ void MotionManager::LoadINISettings(minIni* ini, const std::string &section)
 {
     int ivalue = INVALID_VALUE;
 
-    for(int i = 1; i < JointData::NUMBER_OF_JOINTS; i++)
+    for(int i = JointData::ID_MIN; i <= JointData::ID_MAX; i++)
     {
         char key[10];
         sprintf(key, "ID_%.2d", i);
         if((ivalue = ini->geti(section, key, INVALID_VALUE)) != INVALID_VALUE)  m_Offset[i] = ivalue;
     }
-// Start angle estimator add
-    m_angleEstimator.LoadINISettings(ini, section + "_angle");
-// End angle estimator add
+		m_angleEstimator.LoadINISettings(ini, section + "_angle");
 }
 void MotionManager::SaveINISettings(minIni* ini)
 {
@@ -242,15 +231,13 @@ void MotionManager::SaveINISettings(minIni* ini)
 }
 void MotionManager::SaveINISettings(minIni* ini, const std::string &section)
 {
-    for(int i = 1; i < JointData::NUMBER_OF_JOINTS; i++)
+    for(int i = JointData::ID_MIN; i <= JointData::ID_MAX; i++)
     {
         char key[10];
         sprintf(key, "ID_%.2d", i);
         ini->put(section, key, m_Offset[i]);
     }
-// Start angle estimator add
-    m_angleEstimator.SaveINISettings(ini, section + "_angle");
-// End angle estimator add
+		m_angleEstimator.SaveINISettings(ini, section + "_angle");
 }
 
 #define GYRO_WINDOW_SIZE    100
@@ -258,10 +245,15 @@ void MotionManager::SaveINISettings(minIni* ini, const std::string &section)
 #define MARGIN_OF_SD        2.0
 void MotionManager::Process()
 {
+    if(m_fadeIn && m_torque_count < DEST_TORQUE) {
+        m_CM730->WriteWord(CM730::ID_BROADCAST, MX28::P_TORQUE_LIMIT_L, m_torque_count, 0);
+        m_torque_count += 2;
+    }
+
     if(m_ProcessEnable == false || m_IsRunning == true)
         return;
-
-    m_IsRunning = true;
+		
+		m_IsRunning = true;
 
     // calibrate gyro sensor
     if(m_CalibrationStatus == 0 || m_CalibrationStatus == -1)
@@ -274,12 +266,8 @@ void MotionManager::Process()
         {
             if(m_CM730->m_BulkReadData[CM730::ID_CM].error == 0)
             {
-//RAZOR add start
-//                fb_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L);
-//                rl_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L);
-                fb_gyro_array[buf_idx] = gyro_Y;
-                rl_gyro_array[buf_idx] = gyro_X;
-//RAZOR add stop
+                fb_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L);
+                rl_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L);
                 buf_idx++;
             }
         }
@@ -333,59 +321,41 @@ void MotionManager::Process()
         static int fb_array[ACCEL_WINDOW_SIZE] = {512,};
         static int buf_idx = 0;
         if(m_CM730->m_BulkReadData[CM730::ID_CM].error == 0)
-        {
-// Start angle estimator add
-//            MotionStatus::FB_GYRO = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
-//            MotionStatus::RL_GYRO = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
-            const double GYRO_ALPHA = 0.1;
+					{
+          const double GYRO_ALPHA = 0.1;
+          int gyroValFB = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
+          int gyroValRL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
 
-//RAZOR add start
-//            int gyroValFB = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
-//            int gyroValRL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
-            int gyroValFB = gyro_Y - m_FBGyroCenter;
-            int gyroValRL = gyro_X - m_RLGyroCenter;
-//RAZOR add end
+          MotionStatus::FB_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::FB_GYRO + GYRO_ALPHA * gyroValFB;
+          MotionStatus::RL_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::RL_GYRO + GYRO_ALPHA * gyroValRL;;
+          MotionStatus::RL_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L);
+          MotionStatus::FB_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L);
 
-            MotionStatus::FB_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::FB_GYRO + GYRO_ALPHA * gyroValFB;
-            MotionStatus::RL_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::RL_GYRO + GYRO_ALPHA * gyroValRL;
-// End angle estimator add
-//RAZOR add start
-//            MotionStatus::RL_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L);
-//            MotionStatus::FB_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L);
-            MotionStatus::RL_ACCEL = accel_X;
-            MotionStatus::FB_ACCEL = accel_Y;
-//RAZOR add end
-            fb_array[buf_idx] = MotionStatus::FB_ACCEL;
-            if(++buf_idx >= ACCEL_WINDOW_SIZE) buf_idx = 0;
-// Start angle estimator add
-            const double TICKS_TO_RADIANS_PER_STEP = (M_PI/180.0) * 250.0/512.0 * (0.001 * MotionModule::TIME_UNIT);
-            m_angleEstimator.predict(
-               -TICKS_TO_RADIANS_PER_STEP * gyroValFB,
-               TICKS_TO_RADIANS_PER_STEP * gyroValRL,
-               0
-            );
+					fb_array[buf_idx] = MotionStatus::FB_ACCEL;
+          if(++buf_idx >= ACCEL_WINDOW_SIZE) buf_idx = 0;
 
-            m_angleEstimator.update(
-//RAZOR add start
-//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L) - 512),
-//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L) - 512),
-//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Z_L) - 512)
-                accel_X - 512,
-                accel_Y - 512,
-                accel_Z - 512
-//RAZOR add end
-            );
+           const double TICKS_TO_RADIANS_PER_STEP = (M_PI/180.0) * 250.0/512.0 * (0.001 * MotionModule::TIME_UNIT);
+           m_angleEstimator.predict(
+              -TICKS_TO_RADIANS_PER_STEP * gyroValFB,
+              TICKS_TO_RADIANS_PER_STEP * gyroValRL,
+              0
+           );
 
-            MotionStatus::ANGLE_PITCH = m_angleEstimator.pitch();//std::cout<<180.0/3.14*MotionStatus::ANGLE_PITCH<<std::endl;
-            MotionStatus::ANGLE_ROLL  = m_angleEstimator.roll();//std::cout<<180.0/3.14*MotionStatus::ANGLE_ROLL<<std::endl;
-// End angle estimator add
-        }
+           m_angleEstimator.update(
+               (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L) - 512),
+               (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L) - 512),
+               (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Z_L) - 512)
+           );
+
+           MotionStatus::ANGLE_PITCH = m_angleEstimator.pitch();
+           MotionStatus::ANGLE_ROLL  = m_angleEstimator.roll();
+					}
 
         int sum = 0, avr = 512;
         for(int idx = 0; idx < ACCEL_WINDOW_SIZE; idx++)
             sum += fb_array[idx];
         avr = sum / ACCEL_WINDOW_SIZE;
-//std::cout<<avr<<std::endl;std::cout<<std::endl;
+
         if(avr < MotionStatus::FALLEN_F_LIMIT)
             MotionStatus::FALLEN = FORWARD;
         else if(avr > MotionStatus::FALLEN_B_LIMIT)
@@ -398,16 +368,16 @@ void MotionManager::Process()
             for(std::list<MotionModule*>::iterator i = m_Modules.begin(); i != m_Modules.end(); i++)
             {
                 (*i)->Process();
-                for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
+                for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
                 {
                     if((*i)->m_Joint.GetEnable(id) == true)
                     {
                         MotionStatus::m_CurrentJoints.SetSlope(id, (*i)->m_Joint.GetCWSlope(id), (*i)->m_Joint.GetCCWSlope(id));
                         MotionStatus::m_CurrentJoints.SetValue(id, (*i)->m_Joint.GetValue(id));
 
-                        MotionStatus::m_CurrentJoints.SetPGain(id, (*i)->m_Joint.GetPGain(id));
-                        MotionStatus::m_CurrentJoints.SetIGain(id, (*i)->m_Joint.GetIGain(id));
-                        MotionStatus::m_CurrentJoints.SetDGain(id, (*i)->m_Joint.GetDGain(id));
+                        // MotionStatus::m_CurrentJoints.SetPGain(id, (*i)->m_Joint.GetPGain(id));
+                        // MotionStatus::m_CurrentJoints.SetIGain(id, (*i)->m_Joint.GetIGain(id));
+                        // MotionStatus::m_CurrentJoints.SetDGain(id, (*i)->m_Joint.GetDGain(id));
                     }
                 }
             }
@@ -416,7 +386,7 @@ void MotionManager::Process()
         int param[JointData::NUMBER_OF_JOINTS * MX28::PARAM_BYTES];
         int n = 0;
         int joint_num = 0;
-        for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
+        for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
         {
             if(MX28::isMX28(id))
             {
@@ -441,7 +411,7 @@ void MotionManager::Process()
         int param2[JointData::NUMBER_OF_JOINTS * AX12::PARAM_BYTES];
         n = 0;
         joint_num = 0;
-        for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
+        for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
         {
             if(AX12::isAX12(id))
             {
@@ -461,13 +431,28 @@ void MotionManager::Process()
 
         if(joint_num > 0)
            m_CM730->SyncWrite(AX12::P_CW_COMPLIANCE_SLOPE, AX12::PARAM_BYTES, joint_num, param2);
-    }
 
-    m_CM730->BulkRead();
-
+		unsigned int ic=0;
+    while(ic < m_CM730->m_DelayedWords)
+			{
+			m_CM730->WriteWord(m_CM730->m_DelayedAddress[ic],m_CM730->m_DelayedWord[ic],0);
+			ic++;
+			}
+		m_CM730->m_DelayedWords = 0;
+		}
+		m_CM730->BulkRead();
+		// update joint temps
+    for(int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++)
+       {
+       if(MotionStatus::m_CurrentJoints.GetEnable(id) == true)
+					{
+					int value = m_CM730->m_BulkReadData[id].ReadByte(MX28::P_PRESENT_TEMPERATURE);
+					MotionStatus::m_CurrentJoints.SetTemp(id,value);
+					}
+			}
     if(m_IsLogging)
     {
-        for(int id = 1; id < JointData::NUMBER_OF_JOINTS; id++)
+        for(int id = JointData::ID_MIN; id <= JointData::ID_MAX; id++)
         {
             if(MX28::isMX28(id))
                m_LogFileStream << MotionStatus::m_CurrentJoints.GetValue(id) << "," << m_CM730->m_BulkReadData[id].ReadWord(MX28::P_PRESENT_POSITION_L) << ",";
@@ -483,13 +468,18 @@ void MotionManager::Process()
         m_LogFileStream << m_CM730->m_BulkReadData[FSR::ID_L_FSR].ReadByte(FSR::P_FSR_Y) << ",";
         m_LogFileStream << m_CM730->m_BulkReadData[FSR::ID_R_FSR].ReadByte(FSR::P_FSR_X) << ",";
         m_LogFileStream << m_CM730->m_BulkReadData[FSR::ID_R_FSR].ReadByte(FSR::P_FSR_Y) << ",";
-        m_LogFileStream << std::endl;
+        m_LogFileStream << "\x0d\x0a";
     }
 
     if(m_CM730->m_BulkReadData[CM730::ID_CM].error == 0)
         MotionStatus::BUTTON = m_CM730->m_BulkReadData[CM730::ID_CM].ReadByte(CM730::P_BUTTON);
-
     m_IsRunning = false;
+
+    if(m_torque_count != DEST_TORQUE && --m_torqueAdaptionCounter == 0)
+    {
+        m_torqueAdaptionCounter = TORQUE_ADAPTION_CYCLES;
+        adaptTorqueToVoltage();
+    }
 }
 
 void MotionManager::SetEnable(bool enable)
@@ -503,6 +493,7 @@ void MotionManager::AddModule(MotionModule *module)
 {
 	module->Initialize();
 	m_Modules.push_back(module);
+
 }
 
 void MotionManager::RemoveModule(MotionModule *module)
@@ -517,4 +508,25 @@ void MotionManager::SetJointDisable(int index)
         for(std::list<MotionModule*>::iterator i = m_Modules.begin(); i != m_Modules.end(); i++)
             (*i)->m_Joint.SetEnable(index, false);
     }
+}
+
+void MotionManager::adaptTorqueToVoltage()
+{
+    const int DEST_TORQUE = 1023;
+	// 13V - at 13V darwin will make no adaptation as the standard 3 cell battery is always below this voltage, this implies Nimbro-OP runs on 4 cells
+    const int FULL_TORQUE_VOLTAGE = 130; 
+    int voltage;
+		// torque is only reduced if it is greater then FULL_TORQUE_VOLTAGE
+    if(m_CM730->ReadByte(CM730::ID_CM, CM730::P_VOLTAGE, &voltage, 0) != CM730::SUCCESS)
+        return;
+
+    voltage = (voltage > FULL_TORQUE_VOLTAGE) ? voltage : FULL_TORQUE_VOLTAGE;
+    m_voltageAdaptionFactor = ((double)FULL_TORQUE_VOLTAGE) / voltage;
+    int torque = m_voltageAdaptionFactor * DEST_TORQUE;
+
+#if LOG_VOLTAGES
+    fprintf(m_voltageLog, "%3d       %4d\n", voltage, torque);
+#endif
+
+    m_CM730->WriteWord(CM730::ID_BROADCAST, MX28::P_TORQUE_LIMIT_L, torque, 0);
 }

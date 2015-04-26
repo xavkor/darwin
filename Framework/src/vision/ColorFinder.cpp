@@ -17,20 +17,24 @@ ColorFinder::ColorFinder() :
         m_hue(356),
         m_hue_tolerance(15),
         m_min_saturation(50),
+        m_max_saturation(100),
         m_min_value(10),
         m_min_percent(0.07),
         m_max_percent(30.0),
+				m_width_percent(0),
         color_section(""),
         m_result(0)
 { }
 
-ColorFinder::ColorFinder(int hue, int hue_tol, int min_sat, int min_val, double min_per, double max_per) :
+ColorFinder::ColorFinder(int hue, int hue_tol, int min_sat, int max_sat, int min_val, double min_per, double max_per) :
         m_hue(hue),
         m_hue_tolerance(hue_tol),
         m_min_saturation(min_sat),
+				m_max_saturation(max_sat),
         m_min_value(min_val),
         m_min_percent(min_per),
         m_max_percent(max_per),
+				m_width_percent(0),
         color_section(""),
         m_result(0)
 { }
@@ -64,7 +68,7 @@ void ColorFinder::Filtering(Image *img)
         if( h > 360 )
             h = h % 360;
 
-        if( ((int)s > m_min_saturation) && ((int)v > m_min_value) )
+        if( (((int)s > m_min_saturation) && ((int)s < m_max_saturation)) && ((int)v > m_min_value) )
         {
             if(h_min <= h_max)
             {
@@ -99,6 +103,7 @@ void ColorFinder::LoadINISettings(minIni* ini, const std::string &section)
     if((value = ini->geti(section, "hue", INVALID_VALUE)) != INVALID_VALUE)             m_hue = value;
     if((value = ini->geti(section, "hue_tolerance", INVALID_VALUE)) != INVALID_VALUE)   m_hue_tolerance = value;
     if((value = ini->geti(section, "min_saturation", INVALID_VALUE)) != INVALID_VALUE)  m_min_saturation = value;
+    if((value = ini->geti(section, "max_saturation", INVALID_VALUE)) != INVALID_VALUE)  m_max_saturation = value;
     if((value = ini->geti(section, "min_value", INVALID_VALUE)) != INVALID_VALUE)       m_min_value = value;
 
     double dvalue = -2.0;
@@ -118,6 +123,7 @@ void ColorFinder::SaveINISettings(minIni* ini, const std::string &section)
     ini->put(section,   "hue",              m_hue);
     ini->put(section,   "hue_tolerance",    m_hue_tolerance);
     ini->put(section,   "min_saturation",   m_min_saturation);
+		ini->put(section,		"max_saturation",		m_max_saturation);
     ini->put(section,   "min_value",        m_min_value);
     ini->put(section,   "min_percent",      m_min_percent);
     ini->put(section,   "max_percent",      m_max_percent);
@@ -128,6 +134,8 @@ void ColorFinder::SaveINISettings(minIni* ini, const std::string &section)
 Point2D& ColorFinder::GetPosition(Image* hsv_img)
 {
     int sum_x = 0, sum_y = 0, count = 0;
+		int start_x = -1,end_x = -1;
+		int start_y = -1,end_y = -1;
 
     Filtering(hsv_img);
 
@@ -143,7 +151,11 @@ Point2D& ColorFinder::GetPosition(Image* hsv_img)
                 sum_x += x;
                 sum_y += y;
                 count++;
-            }
+								if(start_x < 0) start_x = x;
+								if(x > end_x) end_x = x;
+								if(start_y < 0) start_y = y;
+								if(y > end_y) end_y = y;
+						}
         }
     }
 
@@ -157,6 +169,7 @@ Point2D& ColorFinder::GetPosition(Image* hsv_img)
         m_center_point.X = (int)((double)sum_x / (double)count);
         m_center_point.Y = (int)((double)sum_y / (double)count);
     }
-
+		m_width_percent = 100.0*(end_x-start_x)/m_result->m_Width;
+		m_height_percent = 100.0*(end_y-start_y)/m_result->m_Height;
     return m_center_point;
 }

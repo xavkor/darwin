@@ -20,12 +20,13 @@ Action* Action::m_UniqueInstance = new Action();
 
 Action::Action()
 {
-	DEBUG_PRINT = false;
+	DEBUG_PRINT = true;
 	m_ActionFile = 0;
+	m_Playing = false;
+
 // joystick add
    m_stick = NULL;
 // joystick add
-	m_Playing = false;
 }
 
 Action::~Action()
@@ -101,21 +102,14 @@ void Action::Initialize()
 {
 	m_Playing = false;
 
-    for( int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++ )
+    for( int id=JointData::ID_MIN; id<=JointData::ID_MAX; id++ )
         m_Joint.SetValue(id, MotionStatus::m_CurrentJoints.GetValue(id));
 }
 
 bool Action::LoadFile( char* filename )
 {
 	FILE *action = fopen( filename, "r+b" );
-
-#ifdef WEBOTS
-	// Olivier.Michel@cyberbotics.com added the following line to allow opening a readonly file located in the Webots installation directory.
-  // This is mainly problematic on Windows
-	if( action == 0 ) action = fopen( filename, "rb" );
-#endif
-
-	if( action == 0 )
+    if( action == 0 )
 	{
 		if(DEBUG_PRINT == true)
 			fprintf(stderr, "Can not open Action file!\n");
@@ -210,8 +204,10 @@ bool Action::Start(int index, PAGE *pPage)
 			fprintf(stderr, "Page %d has no action\n", index);
         return false;
 	}
-
-    m_IndexPlayingPage = index;
+		m_IndexPlayingPage = index;
+		m_StartingPage = index;
+		m_SeqCount = 0;
+		m_StartingPageSeqCount = m_PlayPage.header.seq_repeats;
     m_FirstDrivingStart = true;    
     m_Playing = true;
 	return true;
@@ -341,7 +337,7 @@ void Action::Process()
     {
         m_FirstDrivingStart = false; //First Process end
         m_PlayingFinished = false;
-		  m_StopPlaying = false;
+		m_StopPlaying = false;
         wUnitTimeCount = 0;
         wUnitTimeNum = 0;
         wPauseTime = 0;
@@ -350,7 +346,7 @@ void Action::Process()
         bPlayRepeatCount = m_PlayPage.header.repeat;
         wNextPlayPage = 0;
 
-		for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+		for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
         {
 			if(m_Joint.GetEnable(bID) == true)
 			{
@@ -365,17 +361,17 @@ void Action::Process()
     if( wUnitTimeCount < wUnitTimeNum ) // 현재 진행중이라면
     {
         wUnitTimeCount++;
-        if( bSection == PAUSE_SECTION )
+				if( bSection == PAUSE_SECTION )
         {
         }
         else
         {
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
             {
                 // 현재 사용하는 관절만 계산
-                if(m_Joint.GetEnable(bID) == true)
+              if(m_Joint.GetEnable(bID) == true)
                 {
-					if( ipMovingAngle1024[bID] == 0 )
+						if( ipMovingAngle1024[bID] == 0 )
 						m_Joint.SetValue(bID, wpStartAngle1024[bID]);
 					else
 					{
@@ -427,8 +423,8 @@ void Action::Process()
     else if( wUnitTimeCount >= wUnitTimeNum ) // 현재 Section이 완료되었다면
     {
         wUnitTimeCount = 0;
-
-        for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+							
+        for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
         {
 			if(m_Joint.GetEnable(bID) == true)
 			{
@@ -444,7 +440,7 @@ void Action::Process()
             bSection = MAIN_SECTION;
             wUnitTimeNum =  wUnitTimeTotalNum - (wAccelStep << 1);
 
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
             {
 				if(m_Joint.GetEnable(bID) == true)
 				{
@@ -466,7 +462,7 @@ void Action::Process()
             bSection = POST_SECTION;
             wUnitTimeNum = wAccelStep;
 
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
 			{
 				if(m_Joint.GetEnable(bID) == true)
 					ipMainAngle1024[bID] = ipMovingAngle1024[bID] - ipMainAngle1024[bID] - ipAccelAngle1024[bID];
@@ -490,7 +486,7 @@ void Action::Process()
             // PRE Section 준비
             bSection = PRE_SECTION;
 
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
 			{
 				if(m_Joint.GetEnable(bID) == true)
 					ipLastOutSpeed1024[bID] = 0;
@@ -523,7 +519,7 @@ void Action::Process()
                 // 다음 페이지 로딩
                 if( m_StopPlaying == true ) // 모션 정지 명령이 있다면
                 {
-                    wNextPlayPage = m_PlayPage.header.exit; // 다음 페이지는 Exit 페이지로
+										wNextPlayPage = m_PlayPage.header.exit; // 다음 페이지는 Exit 페이지로
                 }
                 else
                 {
@@ -535,7 +531,16 @@ void Action::Process()
                 }
 
                 if( wNextPlayPage == 0 ) // 재생할 다음 페이지가 없다면 현재 스텝까지하고 종료
-                    m_PlayingFinished = true;
+                    {
+										if(m_SeqCount < m_StartingPageSeqCount && m_StopPlaying == false)
+											{
+											wNextPlayPage = m_StartingPage;
+											LoadPage( wNextPlayPage, &m_NextPlayPage );
+											}
+										else
+											m_PlayingFinished = true;
+										m_SeqCount++;
+										}
                 else
                 {
                     // 다음페이지 로딩(같으면 메모리 복사, 다르면 파일 읽기)
@@ -558,7 +563,7 @@ void Action::Process()
             wMaxAngle1024 = 0;
 
             ////////// Joint별 파라미터 계산
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
 			{
 				if(m_Joint.GetEnable(bID) == true)
 				{
@@ -672,7 +677,7 @@ void Action::Process()
             if(lDivider2 == 0)
                 lDivider2 = 1;
 
-            for( bID=JointData::ID_R_SHOULDER_PITCH; bID<JointData::NUMBER_OF_JOINTS; bID++ )
+            for( bID=JointData::ID_MIN; bID<=JointData::ID_MAX; bID++ )
 			{
 				if(m_Joint.GetEnable(bID) == true)
 				{

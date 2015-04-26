@@ -22,11 +22,12 @@ JointData::JointData()
         if(AX12::isAX12(i))
             m_Value[i] = AX12::CENTER_VALUE;
         m_Angle[i] = 0.0;
-        m_CWSlope[i] = SLOPE_DEFAULT;
-        m_CCWSlope[i] = SLOPE_DEFAULT;
+        m_CWSlope[i] = SLOPE_HARD;
+        m_CCWSlope[i] = SLOPE_HARD;
         m_PGain[i] = P_GAIN_DEFAULT;
         m_IGain[i] = I_GAIN_DEFAULT;
         m_DGain[i] = D_GAIN_DEFAULT;
+	m_Temp[i] = TEMP_DEFAULT;
     }
 }
 
@@ -41,9 +42,7 @@ void JointData::SetEnable(int id, bool enable)
 
 void JointData::SetEnable(int id, bool enable, bool exclusive)
 {
-#ifndef WEBOTS // Because MotionManager is not included in the lite version of the Framework used in the simulation
     if(enable && exclusive) MotionManager::GetInstance()->SetJointDisable(id);
-#endif
     m_Enable[id] = enable;
 }
 
@@ -56,6 +55,7 @@ void JointData::SetEnableHeadOnly(bool enable, bool exclusive)
 {
 	SetEnable(ID_HEAD_PAN,          enable, exclusive);
 	SetEnable(ID_HEAD_TILT,         enable, exclusive);
+//	SetEnable(ID_TORSO_ROTATE,	enable, exclusive);
 }
 
 void JointData::SetEnableRightArmOnly(bool enable)
@@ -71,6 +71,9 @@ void JointData::SetEnableRightArmOnly(bool enable, bool exclusive)
 // Start Joint add
     SetEnable(ID_R_ELBOW_PITCH,     enable, exclusive);
 // End Joint add
+//	SetEnable(ID_R_ELBOW_YAW, 	enable, exclusive);
+//	SetEnable(ID_R_WRIST_YAW,	enable, exclusive);
+//	SetEnable(ID_R_GRIPPER,		enable, exclusive);
 }
 
 void JointData::SetEnableLeftArmOnly(bool enable)
@@ -86,6 +89,9 @@ void JointData::SetEnableLeftArmOnly(bool enable, bool exclusive)
 // Start Joint add
     SetEnable(ID_L_ELBOW_PITCH,     enable, exclusive);
 // End Joint add
+//	SetEnable(ID_L_ELBOW_YAW, 	enable, exclusive);
+//	SetEnable(ID_L_WRIST_YAW,	enable, exclusive);
+//	SetEnable(ID_L_GRIPPER,		enable, exclusive);
 }
 
 void JointData::SetEnableRightLegOnly(bool enable)
@@ -160,7 +166,7 @@ void JointData::SetEnableBody(bool enable)
 
 void JointData::SetEnableBody(bool enable, bool exclusive)
 {
-    for(int id = 1; id < NUMBER_OF_JOINTS; id++)
+    for(int id = JointData::ID_MIN; id <= JointData::ID_MAX; id++)
         SetEnable(id, enable, exclusive);
 }
 

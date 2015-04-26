@@ -8,26 +8,28 @@
 #ifndef _MX_28_H_
 #define _MX_28_H_
 
+//#define MX28_1024
+
 namespace Robot
 {
 	class MX28
 	{
 	public:
-		static const int MIN_VALUE;
-		static const int CENTER_VALUE;
-		static const int MAX_VALUE;
-		static const double MIN_ANGLE;
-		static const double MAX_ANGLE;
-		static const double RATIO_VALUE2ANGLE;
-		static const double RATIO_ANGLE2VALUE;
+	static const int MIN_VALUE = 0;
+        static const int CENTER_VALUE = 2048;
+        static const int MAX_VALUE = 4095;
+        static const double MIN_ANGLE = -180.0; // degree
+        static const double MAX_ANGLE = 180.0; // degree
+        static const double RATIO_VALUE2ANGLE = 0.088; // 360 / 4096
+        static const double RATIO_ANGLE2VALUE = 11.378; // 4096 / 360
 
-		static const int PARAM_BYTES;
+        static const int PARAM_BYTES = 7;
 
-      static int GetMirrorValue(int value)		{ return MAX_VALUE + 1 - value; }
-		static double GetMirrorAngle(double angle)	{ return -angle; }
 
-		static int Angle2Value(double angle) { return (int)(angle*RATIO_ANGLE2VALUE)+CENTER_VALUE; }
-		static double Value2Angle(int value) { return (double)(value-CENTER_VALUE)*RATIO_VALUE2ANGLE; }
+        static int GetMirrorValue(int value)		{ return MAX_VALUE + 1 - value; }
+	static double GetMirrorAngle(double angle)	{ return -angle; }
+	static int Angle2Value(double angle) { return (int)(angle*RATIO_ANGLE2VALUE)+CENTER_VALUE; }
+	static double Value2Angle(int value) { return (double)(value-CENTER_VALUE)*RATIO_VALUE2ANGLE; }
 
 		static bool isMX28(int id) 
       { 
@@ -38,8 +40,8 @@ namespace Robot
       }
 
 		// Address
-		enum
-		{
+        enum
+        {
 			P_MODEL_NUMBER_L			    = 0,
 			P_MODEL_NUMBER_H			    = 1,
 			P_VERSION					    = 2,
@@ -108,8 +110,9 @@ namespace Robot
          P_I_ERROR_OUT_H             = 65,
          P_D_ERROR_OUT_L             = 66,
          P_D_ERROR_OUT_H             = 67,
-			MAXNUM_ADDRESS
-		};
+         MAXNUM_ADDRESS
+        };
+
 	};
 }
 

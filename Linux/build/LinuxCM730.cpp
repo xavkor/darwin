@@ -5,7 +5,6 @@
  *
  */
 #include <stdio.h>
-#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
@@ -106,36 +105,6 @@ UART_OPEN_ERROR:
 	return false;
 }
 
-bool LinuxCM730::SetBaud(int baud)
-{
-    struct serial_struct serinfo;
-    int baudrate = (int)(2000000.0f / (float)(baud + 1));
-
-    if(m_Socket_fd == -1)
-        return false;
-
-    if(ioctl(m_Socket_fd, TIOCGSERIAL, &serinfo) < 0) {
-        fprintf(stderr, "Cannot get serial info\n");
-        return false;
-    }
-
-    serinfo.flags &= ~ASYNC_SPD_MASK;
-    serinfo.flags |= ASYNC_SPD_CUST;
-    serinfo.custom_divisor = serinfo.baud_base / baudrate;
-
-    if(ioctl(m_Socket_fd, TIOCSSERIAL, &serinfo) < 0) {
-        fprintf(stderr, "Cannot set serial info\n");
-        return false;
-    }
-
-    ClosePort();
-    OpenPort();
-
-    m_ByteTransferTime = (float)((1000.0f / baudrate) * 12.0f * 8);
-
-    return true;
-}
-
 void LinuxCM730::ClosePort()
 {
 	if(m_Socket_fd != -1)
@@ -158,27 +127,19 @@ int LinuxCM730::ReadPort(unsigned char* packet, int numPacket)
 	return read(m_Socket_fd, packet, numPacket);
 }
 
-void sem_wait_nointr(sem_t *sem)
-{
-    int sem_result, sem_count = 0;
-	do {
-	    sem_result = sem_wait(sem);
-    } while((sem_result == -1) && (errno == EINTR));
-}
-
 void LinuxCM730::LowPriorityWait()
 {
-    sem_wait_nointr(&m_LowSemID);
+	sem_wait(&m_LowSemID);
 }
 
 void LinuxCM730::MidPriorityWait()
 {
-    sem_wait_nointr(&m_MidSemID);
+	sem_wait(&m_MidSemID);
 }
 
 void LinuxCM730::HighPriorityWait()
 {
-    sem_wait_nointr(&m_HighSemID);
+	sem_wait(&m_HighSemID);
 }
 
 void LinuxCM730::LowPriorityRelease()
@@ -254,13 +215,12 @@ double LinuxCM730::GetUpdateTime()
     return time;
 }
 
-void LinuxCM730::Sleep(double msec)
+void LinuxCM730::Sleep(int Miliseconds)
 {
-    double start_time = GetCurrentTime();
-    double curr_time = start_time;
+	double time = GetCurrentTime();
 
-    do {
-        usleep((start_time + msec) - curr_time);
-        curr_time = GetCurrentTime();
-    } while(curr_time - start_time < msec);
+	do
+	{
+		usleep(Miliseconds * 1000);
+	}while(GetCurrentTime() - time < (double)Miliseconds);
 }

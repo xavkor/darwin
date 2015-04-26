@@ -15,10 +15,7 @@
 #include "MotionModule.h"
 #include "CM730.h"
 #include "minIni.h"
-// Start angle estimator add
 #include "AngleEstimator.h"
-// End angle estimator add
-
 // Start RAZOR add
 #include "RazorAHRS.h"
 // End RAZOR add
@@ -46,25 +43,32 @@ namespace Robot
 
 		std::ofstream m_LogFileStream;
 
-// Start angle estimator add
-      AngleEstimator m_angleEstimator;
-// End angle estimator add
+	AngleEstimator m_angleEstimator;
+	bool m_fadeIn;
+	int m_torque_count;
 
-      MotionManager();
+	FILE* m_voltageLog;
+
+	unsigned int m_torqueAdaptionCounter;
+	double m_voltageAdaptionFactor;
+
+	MotionManager();
+	
+	void adaptTorqueToVoltage();
 
 	protected:
 
 	public:
 		bool DEBUG_PRINT;
-      int m_Offset[JointData::NUMBER_OF_JOINTS];
+    int m_Offset[JointData::NUMBER_OF_JOINTS];
 
 		~MotionManager();
 
 		static MotionManager* GetInstance() { return m_UniqueInstance; }
 
-		bool Initialize(CM730 *cm730);
+		bool Initialize(CM730 *cm730, bool fadeIn = true);
 		bool Reinitialize();
-      void Process();
+        void Process();
 		void SetEnable(bool enable);
 		bool GetEnable()				{ return m_Enabled; }
 		void AddModule(MotionModule *module);
@@ -77,21 +81,18 @@ namespace Robot
 		void StartLogging();
 		void StopLogging();
 
-      void LoadINISettings(minIni* ini);
-      void LoadINISettings(minIni* ini, const std::string &section);
-      void SaveINISettings(minIni* ini);
-      void SaveINISettings(minIni* ini, const std::string &section);
+        void LoadINISettings(minIni* ini);
+        void LoadINISettings(minIni* ini, const std::string &section);
+        void SaveINISettings(minIni* ini);
+        void SaveINISettings(minIni* ini, const std::string &section);
 
 // Start RAZOR add
       std::string serial_port_name;
       RazorAHRS *razor;
 // End RAZOR add
 
-// Start angle estimator add
-		inline AngleEstimator* angleEstimator()
-		{ return &m_angleEstimator; }
-// End angle estimator add
-	};
+		inline AngleEstimator* angleEstimator()		{ return &m_angleEstimator; }
+};
 }
 
 #endif

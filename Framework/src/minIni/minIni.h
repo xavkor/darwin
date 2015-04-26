@@ -119,8 +119,8 @@ int  ini_getkey(const TCHAR *Section, int idx, TCHAR *Buffer, int BufferSize, co
       { return (bool)ini_puts(Section.c_str(), 0, 0, iniFilename.c_str()); }
 #endif
 
-  private:
     std::string iniFilename;
+  private:
   };
 
 #endif /* __WXWINDOWS__ */

@@ -37,7 +37,6 @@ namespace Robot
 // joystick add
 		Joystick *m_stick;
 // joystick add
-
 		double m_PeriodTime;
 		double m_DSP_Ratio;
 		double m_SSP_Ratio;
@@ -99,17 +98,23 @@ namespace Robot
 		double m_Body_Swing_Y;
 		double m_Body_Swing_Z;
 
-      Walking();
+    double m_balance_fb_angle;
+
+		FILE* m_balanceLog;
+    
+		Walking();
 
 		double wsin(double time, double period, double period_shift, double mag, double mag_shift);
 		bool computeIK(double *out, double x, double y, double z, double a, double b, double c);
 		void update_param_time();
 		void update_param_move();
 		void update_param_balance();
+		double splineBalance(double angle, double vel, double gain);
 
 	public:
 		// Walking initial pose
 		double X_OFFSET;
+		double X_OFFSET_START;
 		double Y_OFFSET;
 		double Z_OFFSET;
 		double A_OFFSET;
@@ -125,6 +130,9 @@ namespace Robot
 		double Z_MOVE_AMPLITUDE;
 		double A_MOVE_AMPLITUDE;
 		bool A_MOVE_AIM_ON;
+		double UPPER_VELADJ_LIMIT;
+		double LOWER_VELADJ_LIMIT;
+		double speedAdj;
 
 		// Balance control
 		bool   BALANCE_ENABLE;
@@ -132,11 +140,18 @@ namespace Robot
 		double BALANCE_ANKLE_PITCH_GAIN;
 		double BALANCE_HIP_ROLL_GAIN;
 		double BALANCE_ANKLE_ROLL_GAIN;
+		double BALANCE_ANGLE_SMOOTH_GAIN;
+    double BALANCE_ANGLE_GAIN;
 		double Y_SWAP_AMPLITUDE;
 		double Z_SWAP_AMPLITUDE;
 		double ARM_SWING_GAIN;
 		double PELVIS_OFFSET;
 		double HIP_PITCH_OFFSET;
+
+		double LEAN_FB;
+    double LEAN_FB_ACCEL;
+		double LEAN_TURN;
+    double START_STEP_FACTOR;
 
 		int    P_GAIN;
 		int    I_GAIN;
@@ -146,6 +161,7 @@ namespace Robot
 		void useJoystick();
 		void closeJoystick();
 // joystick add
+
 		int GetCurrentPhase()		{ return m_Phase; }
 		double GetBodySwingY()		{ return m_Body_Swing_Y; }
 		double GetBodySwingZ()		{ return m_Body_Swing_Z; }
@@ -159,14 +175,11 @@ namespace Robot
 		void Stop();
 		void Process();
 		bool IsRunning();
-// Emulation support
-		bool IsActive();
-// end emulation support
 
-      void LoadINISettings(minIni* ini);
-      void LoadINISettings(minIni* ini, const std::string &section);
-      void SaveINISettings(minIni* ini);
-      void SaveINISettings(minIni* ini, const std::string &section);
+        void LoadINISettings(minIni* ini);
+        void LoadINISettings(minIni* ini, const std::string &section);
+        void SaveINISettings(minIni* ini);
+        void SaveINISettings(minIni* ini, const std::string &section);
 	};
 }
 

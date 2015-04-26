@@ -16,6 +16,7 @@ namespace Robot
 	public:
 		enum
 		{
+			ID_MIN			= 1,
 			ID_R_SHOULDER_PITCH     = 1,
 			ID_L_SHOULDER_PITCH     = 2,
 			ID_R_SHOULDER_ROLL      = 3,
@@ -40,7 +41,15 @@ namespace Robot
 			ID_R_ELBOW_PITCH        = 21,
 			ID_L_ELBOW_PITCH        = 22,
 // End Joint add
-			NUMBER_OF_JOINTS
+//			ID_R_ELBOW_YAW		= 21,
+//			ID_L_ELBOW_YAW		= 22,
+//			ID_R_WRIST_YAW		= 23,
+//			ID_L_WRIST_YAW		= 24,
+//			ID_R_GRIPPER		= 25,
+//			ID_L_GRIPPER		= 26,
+//			ID_TORSO_ROTATE		= 23,
+			ID_MAX			= 22,
+			NUMBER_OF_JOINTS	= 23
 		};
 
 		enum
@@ -48,9 +57,13 @@ namespace Robot
 			SLOPE_HARD			= 16,
 			SLOPE_DEFAULT		= 32,
 			SLOPE_SOFT			= 64,
-			SLOPE_EXTRASOFT	= 128
+			SLOPE_EXTRASOFT		= 128
 		};
 
+		enum
+		{
+			TEMP_DEFAULT	= 0
+		};
 		enum
 		{
 		    P_GAIN_DEFAULT      = 32,
@@ -67,33 +80,34 @@ namespace Robot
 		int m_CWSlope[NUMBER_OF_JOINTS];
 		int m_CCWSlope[NUMBER_OF_JOINTS];
 		int m_PGain[NUMBER_OF_JOINTS];
-      int m_IGain[NUMBER_OF_JOINTS];
-      int m_DGain[NUMBER_OF_JOINTS];
+    int m_IGain[NUMBER_OF_JOINTS];
+    int m_DGain[NUMBER_OF_JOINTS];
+    int m_Temp[NUMBER_OF_JOINTS];
 
 	public:
 		JointData();
 		~JointData();
 
-      void SetEnable(int id, bool enable);
+        void SetEnable(int id, bool enable);
 		void SetEnable(int id, bool enable, bool exclusive);
 		void SetEnableHeadOnly(bool enable);
-      void SetEnableHeadOnly(bool enable, bool exclusive);
+        void SetEnableHeadOnly(bool enable, bool exclusive);
 		void SetEnableRightArmOnly(bool enable);
-      void SetEnableRightArmOnly(bool enable, bool exclusive);
+        void SetEnableRightArmOnly(bool enable, bool exclusive);
 		void SetEnableLeftArmOnly(bool enable);
-      void SetEnableLeftArmOnly(bool enable, bool exclusive);
+        void SetEnableLeftArmOnly(bool enable, bool exclusive);
 		void SetEnableRightLegOnly(bool enable);
-      void SetEnableRightLegOnly(bool enable, bool exclusive);
+        void SetEnableRightLegOnly(bool enable, bool exclusive);
 		void SetEnableLeftLegOnly(bool enable);
-      void SetEnableLeftLegOnly(bool enable, bool exclusive);
+        void SetEnableLeftLegOnly(bool enable, bool exclusive);
 		void SetEnableUpperBodyWithoutHead(bool enable);
-      void SetEnableUpperBodyWithoutHead(bool enable, bool exclusive);
+        void SetEnableUpperBodyWithoutHead(bool enable, bool exclusive);
 		void SetEnableLowerBody(bool enable);
-      void SetEnableLowerBody(bool enable, bool exclusive);
+        void SetEnableLowerBody(bool enable, bool exclusive);
 		void SetEnableBodyWithoutHead(bool enable);
-      void SetEnableBodyWithoutHead(bool enable, bool exclusive);
+        void SetEnableBodyWithoutHead(bool enable, bool exclusive);
 		void SetEnableBody(bool enable);
-      void SetEnableBody(bool enable, bool exclusive);
+        void SetEnableBody(bool enable, bool exclusive);
 		bool GetEnable(int id);
 
 		void SetValue(int id, int value);
@@ -111,13 +125,16 @@ namespace Robot
 		void SetCCWSlope(int id, int ccwSlope);
 		int  GetCCWSlope(int id);
 
-      void SetPGain(int id, int pgain) { m_PGain[id] = pgain; }
-      int  GetPGain(int id)            { return m_PGain[id]; }
-      void SetIGain(int id, int igain) { m_IGain[id] = igain; }
-      int  GetIGain(int id)            { return m_IGain[id]; }
-      void SetDGain(int id, int dgain) { m_DGain[id] = dgain; }
-      int  GetDGain(int id)            { return m_DGain[id]; }
-	};
+        void SetPGain(int id, int pgain) { m_PGain[id] = pgain; }
+        int  GetPGain(int id)            { return m_PGain[id]; }
+        void SetIGain(int id, int igain) { m_IGain[id] = igain; }
+        int  GetIGain(int id)            { return m_IGain[id]; }
+        void SetDGain(int id, int dgain) { m_DGain[id] = dgain; }
+        int  GetDGain(int id)            { return m_DGain[id]; }
+				
+		int GetTemp(int id)									{ return m_Temp[id]; }
+		void SetTemp(int id,int value)			{ m_Temp[id] = value; }
+};
 }
 
 #endif

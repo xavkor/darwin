@@ -20,12 +20,16 @@ Image::Image(int width, int height, int pixelsize) :
         m_ImageSize(m_Height*m_WidthStep)
 {
     m_ImageData = new unsigned char[m_ImageSize];
+		y_table = new unsigned int[height];
+		for(int y=0;y<height;y++)
+			y_table[y] += width;
 }
 
 Image::~Image()
 {
 	delete[] m_ImageData;
-    m_ImageData = 0;
+	delete[] y_table;
+  m_ImageData = 0;
 }
 
 Image& Image::operator = (Image &img)
@@ -40,7 +44,6 @@ FrameBuffer::FrameBuffer(int width, int height)
     m_YUVFrame = new Image(width, height, Image::YUV_PIXEL_SIZE);
     m_RGBFrame = new Image(width, height, Image::RGB_PIXEL_SIZE);
     m_HSVFrame = new Image(width, height, Image::HSV_PIXEL_SIZE);
-    m_BGRAFrame = new Image(width, height, Image::BGRA_PIXEL_SIZE); // for Webots only
 }
 
 FrameBuffer::~FrameBuffer()
@@ -48,5 +51,4 @@ FrameBuffer::~FrameBuffer()
     delete m_YUVFrame;
     delete m_RGBFrame;
     delete m_HSVFrame;
-    delete m_BGRAFrame; // for Webots only
 }

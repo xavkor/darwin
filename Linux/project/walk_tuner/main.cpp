@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     Walking::GetInstance()->LoadINISettings(ini);
 
     MotionManager::GetInstance()->AddModule((MotionModule*)Walking::GetInstance());
-    LinuxMotionTimer *motion_timer = new LinuxMotionTimer(MotionManager::GetInstance());
+    LinuxMotionTimer *motion_timer = new LinuxMotionTimer();
     motion_timer->Start();
     /////////////////////////////////////////////////////////////////////
 
@@ -74,10 +74,6 @@ int main(int argc, char *argv[])
 
     while(1)
     {
-	    // Emulation support
-	    cm730.EMULATE_RECORD = Walking::GetInstance()->IsActive();
-	    // end emulation support
-
         int ch = _getch();
         if(ch == 0x1b)
         {

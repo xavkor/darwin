@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     }
     MotionManager::GetInstance()->LoadINISettings(ini);
     MotionManager::GetInstance()->AddModule((MotionModule*)Action::GetInstance());	
-    LinuxMotionTimer *motion_timer = new LinuxMotionTimer(MotionManager::GetInstance());
+    LinuxMotionTimer *motion_timer = new LinuxMotionTimer();
     motion_timer->Stop();
     /////////////////////////////////////////////////////////////////////
 

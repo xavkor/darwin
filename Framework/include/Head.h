@@ -54,6 +54,10 @@ namespace Robot
 		
 		~Head();
 
+		double m_TopLimit_soccer;
+		double m_TopLimit_line_following;
+		double m_TopLimit_robot_following;
+
 		void Initialize();
 		void Process();
 
@@ -61,6 +65,11 @@ namespace Robot
 		double GetBottomLimitAngle()	{ return m_BottomLimit; }
 		double GetRightLimitAngle()		{ return m_RightLimit; }
 		double GetLeftLimitAngle()		{ return m_LeftLimit; }
+
+		void SetTopLimitAngle(double d)		{ m_TopLimit = d; }
+		void SetBottomLimitAngle(double d)	{ m_BottomLimit = d; }
+		void SetRightLimitAngle(double d)		{ m_RightLimit = d; }
+		void SetLeftLimitAngle(double d)		{ m_LeftLimit = d; }
 
 		double GetPanAngle()		{ return m_PanAngle; }
 		double GetTiltAngle()		{ return m_TiltAngle; }
@@ -77,10 +86,10 @@ namespace Robot
 		void closeJoystick();
 // joystick add
 
-      void LoadINISettings(minIni* ini);
-      void LoadINISettings(minIni* ini, const std::string &section);
-      void SaveINISettings(minIni* ini);
-      void SaveINISettings(minIni* ini, const std::string &section);
+        void LoadINISettings(minIni* ini);
+        void LoadINISettings(minIni* ini, const std::string &section);
+        void SaveINISettings(minIni* ini);
+        void SaveINISettings(minIni* ini, const std::string &section);
 	};
 }
 

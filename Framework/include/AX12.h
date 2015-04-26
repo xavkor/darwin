@@ -13,15 +13,15 @@ namespace Robot
 	class AX12
 	{
 	public:
-		static const int MIN_VALUE;
-      static const int CENTER_VALUE;
-      static const int MAX_VALUE;
-      static const double MIN_ANGLE; // degree
-      static const double MAX_ANGLE; // degree
-      static const double RATIO_VALUE2ANGLE ; // 300 / 1024
-      static const double RATIO_ANGLE2VALUE; // 1024 / 300
+	static const int MIN_VALUE = 0;
+        static const int CENTER_VALUE = 512;
+        static const int MAX_VALUE = 1023;
+        static const double MIN_ANGLE = -150.0; // degree
+        static const double MAX_ANGLE = 150.0; // degree
+        static const double RATIO_VALUE2ANGLE = 0.293; // 300 / 1024
+        static const double RATIO_ANGLE2VALUE = 3.413; // 1024 / 300
 
-      static const int PARAM_BYTES;
+        static const int PARAM_BYTES = 5;
 
       static int GetMirrorValue(int value)		{ return MAX_VALUE + 1 - value; }
 		static double GetMirrorAngle(double angle)	{ return -angle; }

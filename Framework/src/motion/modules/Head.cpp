@@ -24,10 +24,10 @@ Head* Head::m_UniqueInstance = new Head();
 Head::Head()
 {
 	m_Pan_p_gain = 0.1;
-	m_Pan_d_gain = 0.05;
+	m_Pan_d_gain = 0.22;
 
    m_Tilt_p_gain = 0.1;
-	m_Tilt_d_gain = 0.05;
+	m_Tilt_d_gain = 0.22;
 
 	m_LeftLimit = 70;
 	m_RightLimit = -70;
@@ -40,7 +40,10 @@ Head::Head()
 
 	m_Pan_Home = 0.0;
 	m_Tilt_Home = Kinematics::EYE_TILT_OFFSET_ANGLE - 30.0;
-//	m_Tilt_Home = Kinematics::EYE_TILT_OFFSET_ANGLE;
+
+	m_TopLimit_line_following = Kinematics::EYE_TILT_OFFSET_ANGLE - 25;
+	m_TopLimit_robot_following = Kinematics::EYE_TILT_OFFSET_ANGLE - 15;
+	m_TopLimit_soccer = Kinematics::EYE_TILT_OFFSET_ANGLE;
 
 	m_Joint.SetEnableHeadOnly(true);
 }
@@ -91,6 +94,10 @@ void Head::LoadINISettings(minIni* ini, const std::string &section)
     if((value = ini->getd(section, "bottom_limit", INVALID_VALUE)) != INVALID_VALUE)m_BottomLimit = value;
     if((value = ini->getd(section, "pan_home", INVALID_VALUE)) != INVALID_VALUE)    m_Pan_Home = value;
     if((value = ini->getd(section, "tilt_home", INVALID_VALUE)) != INVALID_VALUE)   m_Tilt_Home = value;
+
+		if((value = ini->getd(section, "top_limit_line_following", INVALID_VALUE)) != INVALID_VALUE)   m_TopLimit_line_following = value;
+    if((value = ini->getd(section, "top_limit_robot_following", INVALID_VALUE)) != INVALID_VALUE)   m_TopLimit_robot_following = value;
+    if((value = ini->getd(section, "top_limit_soccer", INVALID_VALUE)) != INVALID_VALUE)   m_TopLimit_soccer = value;
 }
 
 void Head::SaveINISettings(minIni* ini)
@@ -110,6 +117,9 @@ void Head::SaveINISettings(minIni* ini, const std::string &section)
     ini->put(section,   "bottom_limit", m_BottomLimit);
     ini->put(section,   "pan_home",     m_Pan_Home);
     ini->put(section,   "tilt_home",    m_Tilt_Home);
+    ini->put(section,   "top_limit_line_following",    m_TopLimit_line_following);
+    ini->put(section,   "top_limit_robot_following",    m_TopLimit_robot_following);
+    ini->put(section,   "top_limit_soccer",    m_TopLimit_soccer);
 }
 
 void Head::MoveToHome()
@@ -153,33 +163,26 @@ void Head::MoveTracking()
 {
 	double pOffset, dOffset;
 
-	// Do nothing if we do not have control. This prevents run-away
-	// on pan/tilt values.
-	if(m_Joint.GetEnable(JointData::ID_HEAD_PAN))
-	{
-		pOffset = m_Pan_err * m_Pan_p_gain;
-		pOffset *= pOffset;
-		if(m_Pan_err < 0)
-			pOffset = -pOffset;
-		dOffset = m_Pan_err_diff * m_Pan_d_gain;
-		dOffset *= dOffset;
-		if(m_Pan_err_diff < 0)
-			dOffset = -dOffset;
-		m_PanAngle += (pOffset + dOffset);
-	}
+	pOffset = m_Pan_err * m_Pan_p_gain;
+	pOffset *= pOffset;
+	if(m_Pan_err < 0)
+		pOffset = -pOffset;
+	dOffset = m_Pan_err_diff * m_Pan_d_gain;
+	dOffset *= dOffset;
+	if(m_Pan_err_diff < 0)
+		dOffset = -dOffset;
+	m_PanAngle += (pOffset + dOffset);
 
-	if(m_Joint.GetEnable(JointData::ID_HEAD_TILT))
-	{
-		pOffset = m_Tilt_err * m_Tilt_p_gain;
-		pOffset *= pOffset;
-		if(m_Tilt_err < 0)
-			pOffset = -pOffset;
-		dOffset = m_Tilt_err_diff * m_Tilt_d_gain;
-		dOffset *= dOffset;
-		if(m_Tilt_err_diff < 0)
-			dOffset = -dOffset;
-		m_TiltAngle += (pOffset + dOffset);
-	}
+	pOffset = m_Tilt_err * m_Tilt_p_gain;
+	pOffset *= pOffset;
+	if(m_Tilt_err < 0)
+		pOffset = -pOffset;
+	dOffset = m_Tilt_err_diff * m_Tilt_d_gain;
+	dOffset *= dOffset;
+	if(m_Tilt_err_diff < 0)
+		dOffset = -dOffset;
+	m_TiltAngle += (pOffset + dOffset);
+
 	CheckLimit();
 }
 

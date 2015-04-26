@@ -54,80 +54,92 @@ void ImgProcess::RGBtoHSV(FrameBuffer *buf)
 {
     int ir, ig, ib, imin, imax;
     int th, ts, tv, diffvmin;
+		unsigned char *rgb,*hsv;
+		rgb = buf->m_RGBFrame->m_ImageData;
+		hsv = buf->m_HSVFrame->m_ImageData;
+		for(int i = 0; i < buf->m_RGBFrame->m_Width*buf->m_RGBFrame->m_Height; i++)
+			{
+      ir = *rgb++;
+      ig = *rgb++;
+      ib = *rgb++;
 
-    for(int i = 0; i < buf->m_RGBFrame->m_Width*buf->m_RGBFrame->m_Height; i++)
-    {
-        ir = buf->m_RGBFrame->m_ImageData[3*i+0];
-        ig = buf->m_RGBFrame->m_ImageData[3*i+1];
-        ib = buf->m_RGBFrame->m_ImageData[3*i+2];
-
-        if( ir > ig )
+      if( ir > ig )
         {
-            imax = ir;
-            imin = ig;
+        imax = ir;
+        imin = ig;
         }
-        else
+      else
         {
-            imax = ig;
-            imin = ir;
+        imax = ig;
+				imin = ir;
         }
 
-        if( imax > ib ) {
-            if( imin > ib ) imin = ib;
-        } else imax = ib;
+       if( imax > ib ) 
+				{
+        if( imin > ib ) imin = ib;
+        } 
+			 else imax = ib;
 
-        tv = imax;
-        diffvmin = imax - imin;
+       tv = imax;
+       diffvmin = imax - imin;
 
         if( (tv!=0) && (diffvmin!=0) )
-        {
-            ts = (255* diffvmin) / imax;
-            if( tv == ir ) th = (ig-ib)*60/diffvmin;
-            else if( tv == ig ) th = 120 + (ib-ir)*60/diffvmin;
-            else th = 240 + (ir-ig)*60/diffvmin;
-            if( th < 0 ) th += 360;
-            th &= 0x0000FFFF;
-        }
+					{
+					ts = (255* diffvmin) / imax;
+					if( tv == ir ) th = (ig-ib)*60/diffvmin;
+					else if( tv == ig ) th = 120 + (ib-ir)*60/diffvmin;
+					else th = 240 + (ir-ig)*60/diffvmin;
+					if( th < 0 ) th += 360;
+					th &= 0x0000FFFF;
+					}
         else
-        {
-            tv = 0;
-            ts = 0;
-            th = 0xFFFF;
-        }
+					{
+          tv = 0;
+          ts = 0;
+          th = 0xFFFF;
+					}
 
         ts = ts * 100 / 255;
         tv = tv * 100 / 255;
 
         //buf->m_HSVFrame->m_ImageData[i]= (unsigned int)th | ((unsigned int)ts<<16) | ((unsigned int)tv<<24);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+0] = (unsigned char)(th >> 8);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+1] = (unsigned char)(th & 0xFF);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+2] = (unsigned char)(ts & 0xFF);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+3] = (unsigned char)(tv & 0xFF);
-    }
+        *hsv++ = (unsigned char)(th >> 8);
+				*hsv++ = (unsigned char)(th & 0xFF);
+        *hsv++ = (unsigned char)(ts & 0xFF);
+        *hsv++ = (unsigned char)(tv & 0xFF);
+				}
 }
 
 void ImgProcess::Erosion(Image* img)
 {
-    int x, y;
+    int x, y,z,index,ytable[img->m_Height];
 
     unsigned char* temp_img = new unsigned char[img->m_Width*img->m_Height];
     memset(temp_img, 0, img->m_Width*img->m_Height);
 
-    for( y=1; y<(img->m_Height-1); y++ )
-    {
-        for( x=1; x<(img->m_Width-1); x++ )
+		index = img->m_Width;
+    for(y=0,z=0;y<img->m_Height;y++) 
+			{
+			ytable[y] = z;
+			z += img->m_Width;
+			}
+
+		for( y=1; y<(img->m_Height-1); y++ )
+			{
+ 			for( x=1; x<(img->m_Width-1); x++ )
         {
-            temp_img[y*img->m_Width+x]= img->m_ImageData[(y-1)*img->m_Width+(x-1)]
-                                      & img->m_ImageData[(y-1)*img->m_Width+(x  )]
-                                      & img->m_ImageData[(y-1)*img->m_Width+(x+1)]
-                                      & img->m_ImageData[(y  )*img->m_Width+(x-1)]
-                                      & img->m_ImageData[(y  )*img->m_Width+(x  )]
-                                      & img->m_ImageData[(y  )*img->m_Width+(x+1)]
-                                      & img->m_ImageData[(y+1)*img->m_Width+(x-1)]
-                                      & img->m_ImageData[(y+1)*img->m_Width+(x  )]
-                                      & img->m_ImageData[(y+1)*img->m_Width+(x+1)];
+        temp_img[index++]= img->m_ImageData[ytable[y-1]+(x-1)]
+                         & img->m_ImageData[ytable[y-1]+(x  )]
+                         & img->m_ImageData[ytable[y-1]+(x+1)]
+                         & img->m_ImageData[ytable[y]+(x-1)]
+                         & img->m_ImageData[ytable[y]+(x  )]
+                         & img->m_ImageData[ytable[y]+(x+1)]
+                         & img->m_ImageData[ytable[y+1]+(x-1)]
+                         & img->m_ImageData[ytable[y+1]+(x  )]
+                         & img->m_ImageData[ytable[y+1]+(x+1)];
         }
-    }
+			index+=2;  
+			}
 
     memcpy(img->m_ImageData, temp_img, img->m_Width*img->m_Height);
 
@@ -136,47 +148,62 @@ void ImgProcess::Erosion(Image* img)
 
 void ImgProcess::Erosion(Image* src, Image* dest)
 {
-    int x, y;
+    int x, y,z,index,ytable[src->m_Height];
 
-    for( y=1; y<(src->m_Height-1); y++ )
-    {
-        for( x=1; x<(src->m_Width-1); x++ )
+		index = src->m_Width;
+    for(y=0,z=0;y<src->m_Height;y++) 
+			{
+			ytable[y] = z;
+			z += src->m_Width;
+			}
+		for( y=1; y<(src->m_Height-1); y++ )
+			{
+			for( x=1; x<(src->m_Width-1); x++ )
         {
-            dest->m_ImageData[y*src->m_Width+x]= src->m_ImageData[(y-1)*src->m_Width+(x-1)]
-                                               & src->m_ImageData[(y-1)*src->m_Width+(x  )]
-                                               & src->m_ImageData[(y-1)*src->m_Width+(x+1)]
-                                               & src->m_ImageData[(y  )*src->m_Width+(x-1)]
-                                               & src->m_ImageData[(y  )*src->m_Width+(x  )]
-                                               & src->m_ImageData[(y  )*src->m_Width+(x+1)]
-                                               & src->m_ImageData[(y+1)*src->m_Width+(x-1)]
-                                               & src->m_ImageData[(y+1)*src->m_Width+(x  )]
-                                               & src->m_ImageData[(y+1)*src->m_Width+(x+1)];
+        dest->m_ImageData[index++]= src->m_ImageData[ytable[y-1]+(x-1)]
+                                  & src->m_ImageData[ytable[y-1]+(x  )]
+                                  & src->m_ImageData[ytable[y-1]+(x+1)]
+                                  & src->m_ImageData[ytable[y]+(x-1)]
+                                  & src->m_ImageData[ytable[y]+(x  )]
+                                  & src->m_ImageData[ytable[y]+(x+1)]
+                                  & src->m_ImageData[ytable[y+1]+(x-1)]
+                                  & src->m_ImageData[ytable[y+1]+(x  )]
+                                  & src->m_ImageData[ytable[y+1]+(x+1)];
         }
-    }
+			index+=2;
+			}
 }
 
 void ImgProcess::Dilation(Image* img)
 {
-    int x, y;
+    int x, y,z,index,ytable[img->m_Height];
 
     unsigned char* temp_img = new unsigned char[img->m_Width*img->m_Height];
     memset(temp_img, 0, img->m_Width*img->m_Height);
 
-    for( y=1; y<(img->m_Height-1); y++ )
-    {
-        for( x=1; x<(img->m_Width-1); x++ )
+		index = img->m_Width;
+    for(y=0,z=0;y<img->m_Height;y++) 
+			{
+			ytable[y] = z;
+			z += img->m_Width;
+			}
+
+		for( y=1; y<(img->m_Height-1); y++ )
+			{
+      for( x=1; x<(img->m_Width-1); x++ )
         {
-            temp_img[y*img->m_Width+x]= img->m_ImageData[(y-1)*img->m_Width+(x-1)]
-                                      | img->m_ImageData[(y-1)*img->m_Width+(x  )]
-                                      | img->m_ImageData[(y-1)*img->m_Width+(x+1)]
-                                      | img->m_ImageData[(y  )*img->m_Width+(x-1)]
-                                      | img->m_ImageData[(y  )*img->m_Width+(x  )]
-                                      | img->m_ImageData[(y  )*img->m_Width+(x+1)]
-                                      | img->m_ImageData[(y+1)*img->m_Width+(x-1)]
-                                      | img->m_ImageData[(y+1)*img->m_Width+(x  )]
-                                      | img->m_ImageData[(y+1)*img->m_Width+(x+1)];
+        temp_img[index++]= img->m_ImageData[ytable[y-1]+(x-1)]
+                         | img->m_ImageData[ytable[y-1]+(x  )]
+                         | img->m_ImageData[ytable[y-1]+(x+1)]
+                         | img->m_ImageData[ytable[y]+(x-1)]
+                         | img->m_ImageData[ytable[y]+(x  )]
+                         | img->m_ImageData[ytable[y]+(x+1)]
+                         | img->m_ImageData[ytable[y+1]+(x-1)]
+                         | img->m_ImageData[ytable[y+1]+(x  )]
+                         | img->m_ImageData[ytable[y+1]+(x+1)];
         }
-    }
+			index+=2;  
+			}
 
     memcpy(img->m_ImageData, temp_img, img->m_Width*img->m_Height);
 
@@ -185,24 +212,30 @@ void ImgProcess::Dilation(Image* img)
 
 void ImgProcess::Dilation(Image* src, Image* dest)
 {
-    int x, y;
+    int x, y,z,index,ytable[src->m_Height];
 
-    for( y=1; y<(src->m_Height-1); y++ )
-    {
-        for( x=1; x<(src->m_Width-1); x++ )
+		index = src->m_Width;
+    for(y=0,z=0;y<src->m_Height;y++) 
+			{
+			ytable[y] = z;
+			z += src->m_Width;
+			}
+		for( y=1; y<(src->m_Height-1); y++ )
+			{
+			for( x=1; x<(src->m_Width-1); x++ )
         {
-            dest->m_ImageData[y*src->m_Width+x]= src->m_ImageData[(y-1)*src->m_Width+(x-1)]
-                                               | src->m_ImageData[(y-1)*src->m_Width+(x  )]
-                                               | src->m_ImageData[(y-1)*src->m_Width+(x+1)]
-                                               | src->m_ImageData[(y  )*src->m_Width+(x-1)]
-                                               | src->m_ImageData[(y  )*src->m_Width+(x  )]
-                                               | src->m_ImageData[(y  )*src->m_Width+(x+1)]
-                                               | src->m_ImageData[(y+1)*src->m_Width+(x-1)]
-                                               | src->m_ImageData[(y+1)*src->m_Width+(x  )]
-                                               | src->m_ImageData[(y+1)*src->m_Width+(x+1)];
-
+        dest->m_ImageData[index++]= src->m_ImageData[ytable[y-1]+(x-1)]
+                                  | src->m_ImageData[ytable[y-1]+(x  )]
+                                  | src->m_ImageData[ytable[y-1]+(x+1)]
+                                  | src->m_ImageData[ytable[y]+(x-1)]
+                                  | src->m_ImageData[ytable[y]+(x  )]
+                                  | src->m_ImageData[ytable[y]+(x+1)]
+                                  | src->m_ImageData[ytable[y+1]+(x-1)]
+                                  | src->m_ImageData[ytable[y+1]+(x  )]
+                                  | src->m_ImageData[ytable[y+1]+(x+1)];
         }
-    }
+			index+=2;
+			}
 }
 
 void ImgProcess::HFlipYUV(Image* img)
@@ -210,7 +243,7 @@ void ImgProcess::HFlipYUV(Image* img)
     int sizeline = img->m_Width * 2; /* 2 bytes per pixel*/
     unsigned char *pframe;
     pframe=img->m_ImageData;
-    unsigned char line[sizeline-1];/*line buffer*/
+    unsigned char line[sizeline];/*line buffer*/
     for (int h = 0; h < img->m_Height; h++)
     {   /*line iterator*/
         for(int w = sizeline-1; w > 0; w = w - 4)
@@ -227,8 +260,10 @@ void ImgProcess::HFlipYUV(Image* img)
 void ImgProcess::VFlipYUV(Image* img)
 {
     int sizeline = img->m_Width * 2; /* 2 bytes per pixel */
-    unsigned char line1[sizeline-1];/*line1 buffer*/
-    unsigned char line2[sizeline-1];/*line2 buffer*/
+    unsigned char *pframe;
+    pframe=img->m_ImageData;
+    unsigned char line1[sizeline];/*line1 buffer*/
+    unsigned char line2[sizeline];/*line2 buffer*/
     for(int h = 0; h < img->m_Height/2; h++)
     {   /*line iterator*/
         memcpy(line1,img->m_ImageData+h*sizeline,sizeline);
@@ -239,61 +274,28 @@ void ImgProcess::VFlipYUV(Image* img)
     }
 }
 
-// ***   WEBOTS PART  *** //
-
-void ImgProcess::BGRAtoHSV(FrameBuffer *buf)
+void ImgProcess::HVFlipYUV(Image* img)
 {
-    int ir, ig, ib, imin, imax;
-    int th, ts, tv, diffvmin;
-
-    for(int i = 0; i < buf->m_BGRAFrame->m_Width*buf->m_BGRAFrame->m_Height; i++)
-    {
-        ib = buf->m_BGRAFrame->m_ImageData[4*i+0];
-        ig = buf->m_BGRAFrame->m_ImageData[4*i+1];
-        ir = buf->m_BGRAFrame->m_ImageData[4*i+2];
-
-        if( ir > ig )
-        {
-            imax = ir;
-            imin = ig;
-        }
-        else
-        {
-            imax = ig;
-            imin = ir;
-        }
-
-        if( imax > ib ) {
-            if( imin > ib ) imin = ib;
-        } else imax = ib;
-
-        tv = imax;
-        diffvmin = imax - imin;
-
-        if( (tv!=0) && (diffvmin!=0) )
-        {
-            ts = (255* diffvmin) / imax;
-            if( tv == ir ) th = (ig-ib)*60/diffvmin;
-            else if( tv == ig ) th = 120 + (ib-ir)*60/diffvmin;
-            else th = 240 + (ir-ig)*60/diffvmin;
-            if( th < 0 ) th += 360;
-            th &= 0x0000FFFF;
-        }
-        else
-        {
-            tv = 0;
-            ts = 0;
-            th = 0xFFFF;
-        }
-
-        ts = ts * 100 / 255;
-        tv = tv * 100 / 255;
-
-        //buf->m_HSVFrame->m_ImageData[i]= (unsigned int)th | ((unsigned int)ts<<16) | ((unsigned int)tv<<24);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+0] = (unsigned char)(th >> 8);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+1] = (unsigned char)(th & 0xFF);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+2] = (unsigned char)(ts & 0xFF);
-        buf->m_HSVFrame->m_ImageData[i*buf->m_HSVFrame->m_PixelSize+3] = (unsigned char)(tv & 0xFF);
-    }
+    int sizeline = img->m_Width * 2; /* 2 bytes per pixel*/
+		unsigned char b1,b2,t1,t2;
+		unsigned char *tframe,*bframe; 
+		bframe=(unsigned char *)img->m_ImageData;
+    tframe=&bframe[((img->m_Height-1)*sizeline)-1];
+    for(int h = 0; h < img->m_Height/2; h++)
+			{
+			for(int z=0,w=sizeline-1;z<sizeline/2;z++,w--)
+        {  
+				b1 = bframe[z];
+				b2 = bframe[w];
+				t1 = tframe[z];
+				t2 = tframe[w];
+				tframe[z] = b2;
+				tframe[w] = b1;
+				bframe[z] = t2;
+				bframe[w] = t1;
+				}
+			bframe+=sizeline;
+			tframe-=sizeline;
+			}
 }
 

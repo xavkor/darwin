@@ -14,10 +14,14 @@
 #define MAXNUM_TXPARAM      (256)
 #define MAXNUM_RXPARAM      (1024)
 
+#define CM730_EMULATED TRUE
+
+#ifdef CM730_EMULATED
 // Emulation support
 #define EMULATED_SERVO_COUNT 26
 #define EMULATED_SERVO_SIZE 50
 // End support emulation
+#endif
 
 namespace Robot
 {
@@ -42,7 +46,6 @@ namespace Robot
 		/////////// Need to implement below methods (Platform porting) //////////////
 		// Port control
 		virtual bool OpenPort() = 0;
-      virtual bool SetBaud(int baud) = 0;
 		virtual void ClosePort() = 0;
 		virtual void ClearPort() = 0;
 		virtual int WritePort(unsigned char* packet, int numPacket) = 0;
@@ -64,7 +67,7 @@ namespace Robot
 		virtual bool IsUpdateTimeout() = 0;
 		virtual double GetUpdateTime() = 0;
 
-		virtual void Sleep(double msec) = 0;
+		virtual void Sleep(int Miliseconds) = 0;
 		//////////////////////////////////////////////////////////////////////////////
 	};
 
@@ -97,9 +100,9 @@ namespace Robot
 			P_MODEL_NUMBER_L		= 0,
 			P_MODEL_NUMBER_H		= 1,
 			P_VERSION				= 2,
-			P_ID					   = 3,
+			P_ID					= 3,
 			P_BAUD_RATE				= 4,
-			P_RETURN_DELAY_TIME	= 5,			
+			P_RETURN_DELAY_TIME		= 5,			
 			P_RETURN_LEVEL			= 16,
 			P_DXL_POWER				= 24,
 			P_LED_PANNEL			= 25,
@@ -107,7 +110,7 @@ namespace Robot
 			P_LED_HEAD_H			= 27,
 			P_LED_EYE_L				= 28,
 			P_LED_EYE_H				= 29,
-			P_BUTTON				   = 30,			
+			P_BUTTON				= 30,			
 			P_GYRO_Z_L				= 38,
 			P_GYRO_Z_H				= 39,
 			P_GYRO_Y_L				= 40,
@@ -123,20 +126,20 @@ namespace Robot
 			P_VOLTAGE				= 50,
 			P_LEFT_MIC_L			= 51,
 			P_LEFT_MIC_H			= 52,
-			P_ADC2_L				   = 53,
-			P_ADC2_H				   = 54,
-			P_ADC3_L			   	= 55,
-			P_ADC3_H			   	= 56,
-			P_ADC4_L			   	= 57,
-			P_ADC4_H			      = 58,
-			P_ADC5_L			   	= 59,
-			P_ADC5_H			   	= 60,
-			P_ADC6_L				   = 61,
-			P_ADC6_H				   = 62,
-			P_ADC7_L				   = 63,
-			P_ADC7_H			   	= 64,
-			P_ADC8_L			   	= 65,
-			P_ADC8_H				   = 66,
+			P_ADC2_L				= 53,
+			P_ADC2_H				= 54,
+			P_ADC3_L				= 55,
+			P_ADC3_H				= 56,
+			P_ADC4_L				= 57,
+			P_ADC4_H				= 58,
+			P_ADC5_L				= 59,
+			P_ADC5_H				= 60,
+			P_ADC6_L				= 61,
+			P_ADC6_H				= 62,
+			P_ADC7_L				= 63,
+			P_ADC7_H				= 64,
+			P_ADC8_L				= 65,
+			P_ADC8_H				= 66,
 			P_RIGHT_MIC_L			= 67,
 			P_RIGHT_MIC_H			= 68,
 			P_ADC10_L				= 69,
@@ -156,7 +159,7 @@ namespace Robot
 
 		enum
 		{
-			ID_CM			   = 200,
+			ID_CM			= 200,
 			ID_BROADCAST	= 254
 		};
 
@@ -164,9 +167,9 @@ namespace Robot
 		PlatformCM730 *m_Platform;
 		static const int RefreshTime = 6; //msec
 		unsigned char m_ControlTable[MAXNUM_ADDRESS];
-
 		unsigned char m_BulkReadTxPacket[MAXNUM_TXPARAM + 10];
 
+#ifdef CM730_EMULATED
 		// Emulation support
 		unsigned char *emu_CM730_memory;
 		unsigned char *emu_R_FSR_memory;
@@ -181,7 +184,8 @@ namespace Robot
 		void Reset_FSR_Emulation(void);
 		void Reset_MX28_Emulation(void);
 		void Reset_AX12_Emulation(void);
-		// End emulation support		
+		// End emulation support	
+#endif
 
 		int TxRxPacket(unsigned char *txpacket, unsigned char *rxpacket, int priority);
 		unsigned char CalculateChecksum(unsigned char *packet);
@@ -189,7 +193,12 @@ namespace Robot
 	public:
 		bool DEBUG_PRINT;
         BulkReadData m_BulkReadData[ID_BROADCAST];
+		int m_DelayedWord[10];
+		int m_DelayedAddress[10];
+		unsigned int m_DelayedWords;
+		bool m_bIncludeTempData;
 
+#ifdef CM730_EMULATED
 		// Emulation support
 		bool EMULATE_CM730;
 		bool EMULATE_FSR;
@@ -197,18 +206,19 @@ namespace Robot
 		bool EMULATE_AX12;
 		bool EMULATE_RECORD;
 		// End emulation support
+#endif
 
 		CM730(PlatformCM730 *platform);
 		~CM730();
 
 		bool Connect();
-      bool ChangeBaud(int baud);
 		void Disconnect();
-		bool DXLPowerOn();
+		bool DXLPowerOn(bool state = true);
 
 		// For board
 		int WriteByte(int address, int value, int *error);
 		int WriteWord(int address, int value, int *error);
+		void WriteWordDelayed(int address, int value);
 
 		// For actuators
 		int Ping(int id, int *error);
@@ -222,17 +232,13 @@ namespace Robot
 		int SyncWrite(int start_addr, int each_length, int number, int *pParam);
 
 		void MakeBulkReadPacket();
-      int BulkRead();
+        int BulkRead();
 
 		// Utility
 		static int MakeWord(int lowbyte, int highbyte);
 		static int GetLowByte(int word);
 		static int GetHighByte(int word);
 		static int MakeColor(int red, int green, int blue);
-
-// ***   WEBOTS PART  *** //
-
-		void MakeBulkReadPacketWb();
 	};
 }
 

@@ -169,7 +169,7 @@ int main(int argc, const char** argv)
 	}
    MotionManager::GetInstance()->LoadINISettings(ini);		
 	MotionManager::GetInstance()->AddModule((MotionModule*)Head::GetInstance());		
-   LinuxMotionTimer *motion_timer = new LinuxMotionTimer(MotionManager::GetInstance());		
+   LinuxMotionTimer *motion_timer = new LinuxMotionTimer();		
    motion_timer->Start();
 
 	MotionStatus::m_CurrentJoints.SetEnableBodyWithoutHead(false);

@@ -796,8 +796,8 @@ void Write(Robot::CM730 *cm730, int id, int addr, int value)
 		return;
 	}
 
-	if(id == CM730::ID_CM && addr == MX28::P_BAUD_RATE)
-	    cm730->ChangeBaud(value);
+//	if(id == CM730::ID_CM && addr == MX28::P_BAUD_RATE)
+//	    cm730->ChangeBaud(value);
 
 	printf(" Writing successful!\n");
 }

@@ -45,6 +45,7 @@ ColorFinder* httpd::ball_finder;
 ColorFinder* httpd::red_finder;
 ColorFinder* httpd::yellow_finder;
 ColorFinder* httpd::blue_finder;
+ColorFinder* httpd::line_finder;
 minIni*      httpd::ini;
 bool httpd::ClientRequest(false);
 
@@ -480,8 +481,7 @@ Return Value: -
 void httpd::command(int fd, char *parameter) {
   char buffer[BUFFER_SIZE] = {0}, *command=NULL, *svalue=NULL, *section=NULL;
   int i=0, res=0, ivalue=0, len=0;
-  float fvalue = 0.0f;
-  char ret_s[10] = {0};
+	 char ret_s[10] = {0};
 
   DBG("parameter is: %s\n", parameter);
 
@@ -512,7 +512,7 @@ void httpd::command(int fd, char *parameter) {
   /* find and convert optional parameter "value" */
   if ( (svalue = strstr(parameter, "value=")) != NULL ) {
     svalue += strlen("value=");
-    len = strspn(svalue, "-1234567890.");
+    len = strspn(svalue, "-1234567890");
     if ( (svalue = strndup(svalue, len)) == NULL ) {
       if (command != NULL) free(command);
       send_error(fd, 500, "could not allocate memory");
@@ -520,7 +520,6 @@ void httpd::command(int fd, char *parameter) {
       return;
     }
     ivalue = MAX(MIN(strtol(svalue, NULL, 10), 999), -999);
-    fvalue = MAX(MIN(strtof(svalue, NULL), 999), -999);
     DBG("converted value form string %s to integer %d\n", svalue, ivalue);
     free(svalue);
   }
@@ -544,6 +543,8 @@ void httpd::command(int fd, char *parameter) {
       else if(strcmp(section, "red") == 0) finder = red_finder;
       else if(strcmp(section, "yellow") == 0) finder = yellow_finder;
       else if(strcmp(section, "blue") == 0) finder = blue_finder;
+	    else if(strcmp(section, "line") == 0) finder = line_finder;
+	
   }
 
   /*
@@ -562,8 +563,7 @@ void httpd::command(int fd, char *parameter) {
       }
 */
 
-      //res = input_cmd(in_cmd_mapping[i].cmd, ivalue);
-      input_cmd(in_cmd_mapping[i].cmd, fvalue, ret_s);
+      input_cmd(in_cmd_mapping[i].cmd, ivalue, ret_s);
       break;
     }
   }
@@ -581,15 +581,16 @@ void httpd::command(int fd, char *parameter) {
                   "Content-type: text/plain\r\n" \
                   STD_HEADER \
                   "\r\n" \
-                  "%s: %s", command, ret_s);
+                  "%s: %d", command, res);
 
   write(fd, buffer, strlen(buffer));
 
   if (command != NULL) free(command);
 }
 
+
 void httpd::input_cmd(in_cmd_type cmd, float value, char* res_str)
-{
+	{
     int res = -1;
 
     //pthread_mutex_lock(&controls_mutex);
@@ -604,115 +605,132 @@ void httpd::input_cmd(in_cmd_type cmd, float value, char* res_str)
             finder->LoadINISettings(ini);
         else
             finder->LoadINISettings(ini, finder->color_section);
-        strcpy(res_str, "RELOAD");
+        res = 1;
         break;
     case IN_CMD_SAVE:
+				//printf("iniFilename = %s\n",ini->iniFilename.c_str());
         Robot::LinuxCamera::GetInstance()->SaveINISettings(ini);
         if(finder == NULL) return;
         if(finder->color_section == "")
             finder->SaveINISettings(ini);
         else
             finder->SaveINISettings(ini, finder->color_section);
-        strcpy(res_str, "SAVE");
+        res = 1;
         break;
     case IN_CMD_GAIN_PLUS:
         res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN);
-        sprintf(res_str, "%d", res);
+				sprintf(res_str, "%d", res);
         if(res < 255)
-            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_GAIN, res+(int)value);
-        sprintf(res_str, "%d", Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN));
+            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_GAIN, res+value);
+        res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN);
         break;
     case IN_CMD_GAIN_MINUS:
         res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN);
-        sprintf(res_str, "%d", res);
-        if(res > 0)
-            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_GAIN, res-(int)value);
-        sprintf(res_str, "%d", Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN));
+ 				sprintf(res_str, "%d", res);
+		    if(res > 0)
+            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_GAIN, res-value);
+        res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_GAIN);
         break;
     case IN_CMD_EXPOSURE_PLUS:
         res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE);
-        sprintf(res_str, "%d", res);
+				sprintf(res_str, "%d", res);
         if(res < 10000)
-            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_EXPOSURE_ABSOLUTE, res+(int)value);
-        sprintf(res_str, "%d", Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE));
+            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_EXPOSURE_ABSOLUTE, res+value);
+        res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE);
         break;
     case IN_CMD_EXPOSURE_MINUS:
         res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE);
-        sprintf(res_str, "%d", res);
+				sprintf(res_str, "%d", res);
         if(res > 0)
-            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_EXPOSURE_ABSOLUTE, res-(int)value);
-        sprintf(res_str, "%d", Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE));
+            Robot::LinuxCamera::GetInstance()->v4l2SetControl(V4L2_CID_EXPOSURE_ABSOLUTE, res-value);
+        res = Robot::LinuxCamera::GetInstance()->v4l2GetControl(V4L2_CID_EXPOSURE_ABSOLUTE);
         break;
     case IN_CMD_HUE_SET:
         if(finder == NULL) return;
-        finder->m_hue = (int)value;
-        sprintf(res_str, "%d", (int)value);
+        finder->m_hue = value;
+        res = value;
         break;
     case IN_CMD_HUE_PLUS:
         if(finder == NULL) return;
-        finder->m_hue += (int)value;
+        finder->m_hue += value;
         if(finder->m_hue > 360) finder->m_hue = 360;
-        sprintf(res_str, "%d", finder->m_hue);
+        res = finder->m_hue;
         break;
     case IN_CMD_HUE_MINUS:
         if(finder == NULL) return;
-        finder->m_hue -= (int)value;
+        finder->m_hue -= value;
         if(finder->m_hue < 0) finder->m_hue = 0;
-        sprintf(res_str, "%d", finder->m_hue);
+        res = finder->m_hue;
         break;
     case IN_CMD_TOLERANCE_SET:
         if(finder == NULL) return;
-        finder->m_hue_tolerance = (int)value;
-        sprintf(res_str, "%d", (int)value);
+        finder->m_hue_tolerance = value;
+        res = value;
         break;
     case IN_CMD_TOLERANCE_PLUS:
         if(finder == NULL) return;
-        finder->m_hue_tolerance += (int)value;
+        finder->m_hue_tolerance += value;
         if(finder->m_hue_tolerance > 179) finder->m_hue_tolerance = 180;
-        sprintf(res_str, "%d", finder->m_hue_tolerance);
+        res = finder->m_hue_tolerance;
         break;
     case IN_CMD_TOLERANCE_MINUS:
         if(finder == NULL) return;
-        finder->m_hue_tolerance -= (int)value;
+        finder->m_hue_tolerance -= value;
         if(finder->m_hue_tolerance < 0) finder->m_hue_tolerance = 0;
-        sprintf(res_str, "%d", finder->m_hue_tolerance);
+        res = finder->m_hue_tolerance;
         break;
     case IN_CMD_MIN_SATURATION_SET:
         if(finder == NULL) return;
-        finder->m_min_saturation = (int)value;
-        sprintf(res_str, "%d", (int)value);
+        finder->m_min_saturation = value;
+        res = value;
         break;
     case IN_CMD_MIN_SATURATION_PLUS:
         if(finder == NULL) return;
-        finder->m_min_saturation += (int)value;
+        finder->m_min_saturation += value;
         if(finder->m_min_saturation > 100) finder->m_min_saturation = 100;
-        sprintf(res_str, "%d", finder->m_min_saturation);
+        res = finder->m_min_saturation;
         break;
     case IN_CMD_MIN_SATURATION_MINUS:
         if(finder == NULL) return;
-        finder->m_min_saturation -= (int)value;
+        finder->m_min_saturation -= value;
         if(finder->m_min_saturation < 0) finder->m_min_saturation = 0;
-        sprintf(res_str, "%d", finder->m_min_saturation);
+        res = finder->m_min_saturation;
         break;
-    case IN_CMD_MIN_VALUE_SET:
+    case IN_CMD_MAX_SATURATION_SET:
         if(finder == NULL) return;
-        finder->m_min_value = (int)value;
-        sprintf(res_str, "%d", (int)value);
+        finder->m_max_saturation = value;
+        res = value;
+        break;
+    case IN_CMD_MAX_SATURATION_PLUS:
+        if(finder == NULL) return;
+        finder->m_max_saturation += value;
+        if(finder->m_max_saturation > 100) finder->m_max_saturation = 100;
+        res = finder->m_max_saturation;
+        break;
+    case IN_CMD_MAX_SATURATION_MINUS:
+        if(finder == NULL) return;
+        finder->m_max_saturation -= value;
+        if(finder->m_max_saturation < 0) finder->m_max_saturation = 0;
+        res = finder->m_max_saturation;
+        break;
+		case IN_CMD_MIN_VALUE_SET:
+        if(finder == NULL) return;
+        finder->m_min_value = value;
+        res = value;
         break;
     case IN_CMD_MIN_VALUE_PLUS:
         if(finder == NULL) return;
-        finder->m_min_value += (int)value;
+        finder->m_min_value += value;
         if(finder->m_min_value > 100) finder->m_min_value = 100;
-        sprintf(res_str, "%d", finder->m_min_value);
+        res = finder->m_min_value;
         break;
     case IN_CMD_MIN_VALUE_MINUS:
         if(finder == NULL) return;
-        finder->m_min_value -= (int)value;
+        finder->m_min_value -= value;
         if(finder->m_min_value < 0) finder->m_min_value = 0;
-        sprintf(res_str, "%d", finder->m_min_value);
+        res = finder->m_min_value;
         break;
-
-    case IN_CMD_WALK_MODE:
+     case IN_CMD_WALK_MODE:
         if(value == 1)
         {
             Walking::GetInstance()->Start();
@@ -842,12 +860,14 @@ void httpd::input_cmd(in_cmd_type cmd, float value, char* res_str)
         Walking::GetInstance()->D_GAIN += (int)value;
         sprintf(res_str, "%d", Walking::GetInstance()->D_GAIN);
         break;
-
-    default:
+ 
+		default:
         res = -1;
     }
 
     //pthread_mutex_unlock(&controls_mutex);
+
+    return;
 }
 
 
@@ -909,7 +929,7 @@ void* httpd::client_thread( void *arg ) {
     pb += strlen("GET /?action=command");
 
     /* only accept certain characters */
-    len = MIN(MAX(strspn(pb, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-=&1234567890."), 0), 100);
+    len = MIN(MAX(strspn(pb, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-=&1234567890"), 0), 100);
     req.parameter = (char*)malloc(len+1);
     if ( req.parameter == NULL ) {
       exit(EXIT_FAILURE);

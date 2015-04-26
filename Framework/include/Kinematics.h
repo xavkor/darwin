@@ -22,13 +22,26 @@ namespace Robot
 	protected:
 
 	public:
-		static const double CAMERA_DISTANCE; //mm
-		static const double EYE_TILT_OFFSET_ANGLE; //degree
-		static const double LEG_SIDE_OFFSET; //mm
-		static const double THIGH_LENGTH; //mm
-		static const double CALF_LENGTH; //mm
-		static const double ANKLE_LENGTH; //mm
-		static const double LEG_LENGTH; //mm (THIGH_LENGTH + CALF_LENGTH + ANKLE_LENGTH)
+      /* My specifications 
+      */
+      static const double CAMERA_DISTANCE = 40.0; //mm
+      static const double EYE_TILT_OFFSET_ANGLE = 40.0; //degree
+      static const double LEG_SIDE_OFFSET = 40.0; //mm
+      static const double THIGH_LENGTH = 93.0; //mm
+      static const double CALF_LENGTH = 93.0; //mm
+      static const double ANKLE_LENGTH = 33.0; //mm
+      static const double LEG_LENGTH = 219.0; //mm
+
+      /* HSORS
+
+		static const double CAMERA_DISTANCE = 50.00; //mm
+		static const double EYE_TILT_OFFSET_ANGLE = 10.0; //degree
+		static const double LEG_SIDE_OFFSET = 40.0; //mm
+		static const double THIGH_LENGTH = 76.00; //mm
+		static const double CALF_LENGTH = 76.00; //mm
+		static const double ANKLE_LENGTH = 35.0; //mm
+		static const double LEG_LENGTH = 187.0; //mm (THIGH_LENGTH + CALF_LENGTH + ANKLE_LENGTH)
+      */
 
 		~Kinematics();
 

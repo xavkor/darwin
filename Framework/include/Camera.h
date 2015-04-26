@@ -17,10 +17,9 @@ namespace Robot
 		static const double VIEW_V_ANGLE = 46.0; //degree
 		static const double VIEW_H_ANGLE = 58.0; //degree
 
-		static int WIDTH;
-		static int HEIGHT;
+        static const int WIDTH  = 320;
+        static const int HEIGHT = 240;
 	};
-
 }
 
 #endif

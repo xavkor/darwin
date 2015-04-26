@@ -35,7 +35,6 @@ public:
 
 	inline double yaw() const
 	{ return m_yaw; }
-
 private:
 	double m_acc_gain;
 	double m_acc_smooth_decay;
@@ -48,4 +47,5 @@ private:
 	double m_pitch;
 	double m_yaw;
 };
+
 #endif

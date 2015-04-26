@@ -42,7 +42,6 @@ namespace Robot
 
 		///////////////// Platform Porting //////////////////////
 		bool OpenPort();
-        bool SetBaud(int baud);
 		void ClosePort();
 		void ClearPort();
 		int WritePort(unsigned char* packet, int numPacket);
@@ -62,7 +61,7 @@ namespace Robot
 		bool IsUpdateTimeout();
 		double GetUpdateTime();
 
-		virtual void Sleep(double msec);
+		virtual void Sleep(int Miliseconds);
 		////////////////////////////////////////////////////////
 	};
 }

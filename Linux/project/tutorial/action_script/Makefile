@@ -12,7 +12,7 @@ TARGET = action_script
 INCLUDE_DIRS = -I../../../include -I../../../../Framework/include
 
 CXX = g++
-CXXFLAGS += -O2 -DLINUX -Wall $(INCLUDE_DIRS)
+CXXFLAGS += -O2 -DLINUX -D_REENTRANT -Wall $(INCLUDE_DIRS)
 #CXXFLAGS += -O2 -DLINUX -DDEBUG -Wall $(INCLUDE_DIRS)
 LFLAGS += -lpthread -ljpeg -lrt
 

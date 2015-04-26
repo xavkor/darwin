@@ -30,16 +30,19 @@ namespace Robot
         int m_hue;             /* 0 ~ 360 */
         int m_hue_tolerance;   /* 0 ~ 180 */
         int m_min_saturation;  /* 0 ~ 100 */
+        int m_max_saturation;  /* 0 ~ 100 */
         int m_min_value;       /* 0 ~ 100 */
         double m_min_percent;  /* 0.0 ~ 100.0 */
         double m_max_percent;  /* 0.0 ~ 100.0 */
+				double m_width_percent;/* 0.0 ~ 100.0 */
+				double m_height_percent;/* 0.0 ~ 100.0 */
 
         std::string color_section;
 
         Image*  m_result;
 
         ColorFinder();
-        ColorFinder(int hue, int hue_tol, int min_sat, int min_val, double min_per, double max_per);
+        ColorFinder(int hue, int hue_tol, int min_sat, int max_sat, int min_val, double min_per, double max_per);
         virtual ~ColorFinder();
 
         void LoadINISettings(minIni* ini);
