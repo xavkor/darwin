@@ -9,7 +9,7 @@
 
 TARGET = face_head_tracking
 
-INCLUDE_DIRS = -I../../../include -I../../../../Framework/include
+INCLUDE_DIRS = -I../../../include -I../../../../Framework/include -I../../../../FaceTracker/include
 
 CXX = g++
 CXXFLAGS += -O2 -DLINUX -D_REENTRANT -Wall $(INCLUDE_DIRS)
@@ -25,14 +25,18 @@ clean:
 
 libclean:
 	make -C ../../../build clean
+	make -C ../../../../FaceTracker clean
 
 distclean: clean libclean
+
+facetracker.a:
+	make -C ../../../../FaceTracker
 
 darwin.a:
 	make -C ../../../build
 
-$(TARGET): darwin.a $(OBJECTS)
-	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a -o $(TARGET) $(LFLAGS) `pkg-config --libs opencv`
+$(TARGET): darwin.a facetracker.a $(OBJECTS)
+	$(CXX) $(CFLAGS) $(OBJECTS) ../../../lib/darwin.a ../../../lib/facetracker.a -o $(TARGET) $(LFLAGS) `pkg-config --libs opencv`
 	chmod 755 $(TARGET)
 
 # useful to make a backup "make tgz"

@@ -9,10 +9,12 @@
 
 TARGET = walk_tuner
 
-CXX = g++
 INCLUDE_DIRS = -I../../include -I../../../Framework/include
-CXXFLAGS +=	-O2 -DLINUX -g -Wall -fmessage-length=0 $(INCLUDE_DIRS)
-LIBS += -lpthread -lncurses -lrt -ljpeg
+
+CXX = g++
+
+CXXFLAGS +=	-O2 -DLINUX -g -Wall -D_REENTRANT -fmessage-length=0 $(INCLUDE_DIRS)
+LIBS += -lpthread -lncurses -lrt -ljpeg 
 
 OBJS =	./cmd_process.o	\
 		./main.o
@@ -32,7 +34,8 @@ darwin.a:
 	make -C ../../build
 
 $(TARGET): $(OBJS) ../../lib/darwin.a
-	$(CXX) -o $(TARGET) $(OBJS) ../../lib/darwin.a $(LIBS)
+	#$(CXX) -o $(TARGET) $(OBJS) `pkg-config --cflags opencv` ../../lib/darwin.a $(LIBS) 
+	$(CXX) $(CFLAGS) $(OBJS) ../../lib/darwin.a -o $(TARGET) $(LIBS) `pkg-config --libs opencv`
 
 # useful to make a backup "make tgz"
 tgz: clean

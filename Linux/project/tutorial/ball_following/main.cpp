@@ -98,6 +98,8 @@ int main(void)
     Walking::GetInstance()->m_Joint.SetEnableBodyWithoutHead(true, true);
 	MotionManager::GetInstance()->SetEnable(true);
 
+    MotionManager::GetInstance()->ResetGyroCalibration();
+
     while(1)
     {
         Point2D pos;

@@ -19,6 +19,10 @@
 #include "AngleEstimator.h"
 // End angle estimator add
 
+// Start RAZOR add
+#include "RazorAHRS.h"
+// End RAZOR add
+
 #define OFFSET_SECTION "Offset"
 #define INVALID_VALUE   -1024.0
 
@@ -77,6 +81,11 @@ namespace Robot
       void LoadINISettings(minIni* ini, const std::string &section);
       void SaveINISettings(minIni* ini);
       void SaveINISettings(minIni* ini, const std::string &section);
+
+// Start RAZOR add
+      std::string serial_port_name;
+      RazorAHRS *razor;
+// End RAZOR add
 
 // Start angle estimator add
 		inline AngleEstimator* angleEstimator()

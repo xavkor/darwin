@@ -15,13 +15,14 @@ TARGET = darwin.a
 
 INCLUDE_DIRS = -I../include -I../../Framework/include
 
-CXXFLAGS += -O2 -DLINUX -Wall -shared $(INCLUDE_DIRS)
+CXXFLAGS += -O2 -DLINUX -Wall -D_REENTRANT -shared $(INCLUDE_DIRS) 
 #CXXFLAGS += -O2 -DDEBUG -DLINUX -Wall -shared $(INCLUDE_DIRS)
 LFLAGS += -lpthread -ldl
 
 OBJS =  ../../Framework/src/MX28.o     	\
         ../../Framework/src/AX12.o     	\
         ../../Framework/src/CM730.o     	\
+        ../../Framework/src/RazorAHRS.o     	\
         ../../Framework/src/math/Matrix.o   \
         ../../Framework/src/math/Plane.o    \
         ../../Framework/src/math/Point.o    \

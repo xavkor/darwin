@@ -13,6 +13,7 @@
 #include "Camera.h"
 #include "mjpg_streamer.h"
 #include "LinuxDARwIn.h"
+#include "FaceFinder.h"
 
 #define INI_FILE_PATH       "config.ini"
 

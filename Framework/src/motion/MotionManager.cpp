@@ -34,6 +34,38 @@ MotionManager::~MotionManager()
 {
 }
 
+double gyro_Y, gyro_X, accel_X, accel_Y, accel_Z;
+
+// Razor error callback handler
+// Will be called from (and in) Razor background thread!
+void on_error(const std::string &msg)
+{
+  std::cout << "  " << "ERROR: " << msg << std::endl;
+  
+  // NOTE: make a copy of the message if you want to save it or send it to another thread. Do not
+  // save or pass the reference itself, it will not be valid after this function returns! 
+}
+
+// Razor data callback handler
+// Will be called from (and in) Razor background thread!
+// 'data' depends on mode that was set when creating the RazorAHRS object. In this case 'data'
+// holds 3 float values: yaw, pitch and roll.
+void on_data(const float data[])
+{
+   double coeff = 1/14.375;//1023/28750;//
+
+   accel_X = 512-data[0];
+   accel_Y = 512-data[1];
+   accel_Z = 512-data[2];
+   gyro_X = coeff*data[7];
+   gyro_Y = coeff*data[6];
+
+//   std::cout << "ACC = " << data[0] << ", " << data[1] << ", " << data[2]
+//     << "        MAG = " << data[3] << ", " << data[4] << ", " << data[5]
+//     << "        GYR = " << data[6] << ", " << data[7] << ", " << data[8] << std::endl;
+}
+
+
 bool MotionManager::Initialize(CM730 *cm730)
 {
 	int value, error;
@@ -48,6 +80,11 @@ bool MotionManager::Initialize(CM730 *cm730)
 			fprintf(stderr, "Fail to connect CM-730\n");
 		return false;
 	}
+
+// Start RAZOR add
+   serial_port_name = "/dev/ttyUSB1";
+   razor = new RazorAHRS(serial_port_name, on_data, on_error, RazorAHRS::ACC_MAG_GYR_CALIBRATED);
+// End RAZOR add
 
 	for(int id=JointData::ID_R_SHOULDER_PITCH; id<JointData::NUMBER_OF_JOINTS; id++)
 	{
@@ -237,8 +274,12 @@ void MotionManager::Process()
         {
             if(m_CM730->m_BulkReadData[CM730::ID_CM].error == 0)
             {
-                fb_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L);
-                rl_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L);
+//RAZOR add start
+//                fb_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L);
+//                rl_gyro_array[buf_idx] = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L);
+                fb_gyro_array[buf_idx] = gyro_Y;
+                rl_gyro_array[buf_idx] = gyro_X;
+//RAZOR add stop
                 buf_idx++;
             }
         }
@@ -297,14 +338,23 @@ void MotionManager::Process()
 //            MotionStatus::FB_GYRO = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
 //            MotionStatus::RL_GYRO = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
             const double GYRO_ALPHA = 0.1;
-            int gyroValFB = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
-            int gyroValRL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
+
+//RAZOR add start
+//            int gyroValFB = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_Y_L) - m_FBGyroCenter;
+//            int gyroValRL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_GYRO_X_L) - m_RLGyroCenter;
+            int gyroValFB = gyro_Y - m_FBGyroCenter;
+            int gyroValRL = gyro_X - m_RLGyroCenter;
+//RAZOR add end
 
             MotionStatus::FB_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::FB_GYRO + GYRO_ALPHA * gyroValFB;
             MotionStatus::RL_GYRO = (1.0 - GYRO_ALPHA) * MotionStatus::RL_GYRO + GYRO_ALPHA * gyroValRL;
 // End angle estimator add
-            MotionStatus::RL_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L);
-            MotionStatus::FB_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L);
+//RAZOR add start
+//            MotionStatus::RL_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L);
+//            MotionStatus::FB_ACCEL = m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L);
+            MotionStatus::RL_ACCEL = accel_X;
+            MotionStatus::FB_ACCEL = accel_Y;
+//RAZOR add end
             fb_array[buf_idx] = MotionStatus::FB_ACCEL;
             if(++buf_idx >= ACCEL_WINDOW_SIZE) buf_idx = 0;
 // Start angle estimator add
@@ -316,13 +366,18 @@ void MotionManager::Process()
             );
 
             m_angleEstimator.update(
-                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L) - 512),
-                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L) - 512),
-                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Z_L) - 512)
+//RAZOR add start
+//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_X_L) - 512),
+//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Y_L) - 512),
+//                (m_CM730->m_BulkReadData[CM730::ID_CM].ReadWord(CM730::P_ACCEL_Z_L) - 512)
+                accel_X - 512,
+                accel_Y - 512,
+                accel_Z - 512
+//RAZOR add end
             );
 
-            MotionStatus::ANGLE_PITCH = m_angleEstimator.pitch();
-            MotionStatus::ANGLE_ROLL  = m_angleEstimator.roll();
+            MotionStatus::ANGLE_PITCH = m_angleEstimator.pitch();//std::cout<<180.0/3.14*MotionStatus::ANGLE_PITCH<<std::endl;
+            MotionStatus::ANGLE_ROLL  = m_angleEstimator.roll();//std::cout<<180.0/3.14*MotionStatus::ANGLE_ROLL<<std::endl;
 // End angle estimator add
         }
 
@@ -330,7 +385,7 @@ void MotionManager::Process()
         for(int idx = 0; idx < ACCEL_WINDOW_SIZE; idx++)
             sum += fb_array[idx];
         avr = sum / ACCEL_WINDOW_SIZE;
-
+//std::cout<<avr<<std::endl;std::cout<<std::endl;
         if(avr < MotionStatus::FALLEN_F_LIMIT)
             MotionStatus::FALLEN = FORWARD;
         else if(avr > MotionStatus::FALLEN_B_LIMIT)
