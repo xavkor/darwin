@@ -90,6 +90,7 @@ int main()
     MotionManager::GetInstance()->AddModule((MotionModule*)Head::GetInstance());
     MotionManager::GetInstance()->AddModule((MotionModule*)Walking::GetInstance());
     LinuxMotionTimer *motion_timer = new LinuxMotionTimer();
+    motion_timer->Initialize(MotionManager::GetInstance());
     motion_timer->Start();
     /////////////////////////////////////////////////////////////////////
 

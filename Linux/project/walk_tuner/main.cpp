@@ -14,7 +14,7 @@
 #include "Walking.h"
 
 #define INI_FILE_PATH       "config.ini"
-#define U2D_DEV_NAME        "/dev/ttyUSB1"
+#define U2D_DEV_NAME        "/dev/ttyUSB0"
 
 using namespace Robot;
 
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 
     MotionManager::GetInstance()->AddModule((MotionModule*)Walking::GetInstance());
     LinuxMotionTimer *motion_timer = new LinuxMotionTimer();
+    motion_timer->Initialize(MotionManager::GetInstance());
     motion_timer->Start();
     /////////////////////////////////////////////////////////////////////
 

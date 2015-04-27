@@ -55,7 +55,8 @@ int main(void)
 	}
    MotionManager::GetInstance()->LoadINISettings(ini);		
 	MotionManager::GetInstance()->AddModule((MotionModule*)Head::GetInstance());		
-   LinuxMotionTimer *motion_timer = new LinuxMotionTimer(MotionManager::GetInstance());		
+   LinuxMotionTimer *motion_timer = new LinuxMotionTimer();		
+   motion_timer->Initialize(MotionManager::GetInstance());
    motion_timer->Start();
 
 	MotionStatus::m_CurrentJoints.SetEnableBodyWithoutHead(false);
