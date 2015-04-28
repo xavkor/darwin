@@ -169,7 +169,8 @@ int main(int argc, const char** argv)
 	}
    MotionManager::GetInstance()->LoadINISettings(ini);		
 	MotionManager::GetInstance()->AddModule((MotionModule*)Head::GetInstance());		
-   LinuxMotionTimer *motion_timer = new LinuxMotionTimer();		
+   LinuxMotionTimer *motion_timer = new LinuxMotionTimer();	
+   motion_timer->Initialize(MotionManager::GetInstance());	
    motion_timer->Start();
 
 	MotionStatus::m_CurrentJoints.SetEnableBodyWithoutHead(false);
@@ -249,7 +250,7 @@ int main(int argc, const char** argv)
 		        CV_FONT_HERSHEY_SIMPLEX,0.5,CV_RGB(255,255,255));
           }
           //show image and check for user input
-          imshow("Face Tracker",im); 
+//          imshow("Face Tracker",im); 
           int c = cv::waitKey(10);
           if(c == 27)break; else if(char(c) == 'd')model.Save("/home/koreki/Documents/perso/darwin/Linux/project/tutorial/face_tracker/koreki.tracker");//model.FrameReset();
 //model.FrameReset();
